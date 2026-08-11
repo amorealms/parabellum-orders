@@ -32,6 +32,7 @@ function doPost(e) {
     const data = JSON.parse(e.parameter.data || '{}');
     if (action === 'add') return addOrder(data);
     if (action === 'update') return updateOrder(data);
+    if (action === 'delete') return deleteOrder(data);
     return jsonResponse({ error: 'פעולה לא מוכרת' });
   } catch (err) {
     return jsonResponse({ error: err.message });
@@ -86,6 +87,20 @@ function updateOrder(data) {
         data[h] !== undefined ? data[h] : values[i][colIdx]
       );
       sheet.getRange(i + 1, 1, 1, headers.length).setValues([row]);
+      return jsonResponse({ success: true });
+    }
+  }
+  return jsonResponse({ error: 'הזמנה לא נמצאה' });
+}
+
+function deleteOrder(data) {
+  const sheet = getSheet_();
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+  const idCol = headers.indexOf('id');
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][idCol] === data.id) {
+      sheet.deleteRow(i + 1);
       return jsonResponse({ success: true });
     }
   }
