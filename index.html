@@ -323,7 +323,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 
 <script>
 /* ============ CONFIG ============ */
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPaXiEgtWd81WJtn7KsSnmlnWEmbWw5oB8Ed_CVMLyC1cFTKut40TVEB0Na61zWKX0/exec';
 const BATTALION_NAME = 'יחסם 179';
 const VERSION = 'v11.08.26.1'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
@@ -436,7 +436,13 @@ function editOrder(id){
   editingId = id;
   const f = document.getElementById('orderForm');
   Object.keys(o).forEach(k=>{
-    if(f.elements[k]) f.elements[k].value = o[k];
+    const el = f.elements[k];
+    if(!el) return;
+    let val = o[k];
+    if(el.type === 'date' && typeof val === 'string' && val.includes('T')){
+      val = val.split('T')[0]; // strip ISO timestamp down to YYYY-MM-DD
+    }
+    el.value = val;
   });
   selectedReasons = new Set((o['סיבה להזמנה']||'').split(',').map(s=>s.trim()).filter(Boolean));
   document.querySelectorAll('.chip').forEach(c=>{
@@ -473,6 +479,7 @@ document.getElementById('orderForm').addEventListener('submit', async e=>{
   fd.forEach((v,k)=> data[k]=v);
   data['סיבה להזמנה'] = [...selectedReasons].join(', ');
   data['הוזמן עי'] = currentUser || '';
+  data['עודכן עי'] = currentUser || '';
   const action = editingId ? 'update' : 'add';
   if(editingId) data.id = editingId;
 
@@ -555,21 +562,30 @@ function renderOrders(orders){
         <button type="button" class="secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px" onclick="editOrder('${o.id}')">✏️ ערוך</button>
         <button type="button" class="secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px;border-color:var(--red);color:var(--red)" onclick="deleteOrderConfirm('${o.id}')">🗑️ מחק</button>
       </div>
+      ${o['לוג סטאטוס'] ? `
+      <details style="margin-top:8px">
+        <summary style="font-size:11px;color:var(--muted);cursor:pointer">היסטוריית סטאטוסים</summary>
+        <pre style="white-space:pre-wrap;font-size:11px;color:var(--muted);margin-top:6px;font-family:inherit">${o['לוג סטאטוס']}</pre>
+      </details>` : ''}
     </div>`;
   }).join('');
 }
 async function updateStatus(id, newStatus){
   try{
-    await fetch(SCRIPT_URL, {
+    const res = await fetch(SCRIPT_URL, {
       method:'POST',
-      body: new URLSearchParams({action:'update', data: JSON.stringify({id, 'סטאטוס הזמנה': newStatus})})
+      body: new URLSearchParams({action:'update', data: JSON.stringify({id, 'סטאטוס הזמנה': newStatus, 'עודכן עי': currentUser || ''})})
     });
+    const json = await res.json();
+    if(!json.success){
+      showToast('שגיאה: ' + (json.error || 'לא עודכן'));
+      return;
+    }
     showToast('סטאטוס עודכן');
-    const o = ordersCache.find(x=>x.id===id);
-    if(o) o['סטאטוס הזמנה'] = newStatus;
+    await loadOrders(); // refresh so the status log reflects the real backend entry
     renderOrders(ordersCache);
   }catch(err){
-    showToast('שגיאה בעדכון');
+    showToast('שגיאה בעדכון — בדוק חיבור');
   }
 }
 document.getElementById('search').addEventListener('input', e=>{
