@@ -84,14 +84,19 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 .order-card .meta{font-size:12px;color:var(--muted);margin-top:3px;font-family:monospace}
 .badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;white-space:nowrap;border:1.5px solid transparent}
 .b-נשלח{background:var(--gray-bg);color:var(--gray);border-color:var(--gray-border)}
-.b-הוזמן{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
+.b-הוזמן{background:var(--yellow-bg);color:var(--yellow);border-color:var(--yellow-border)}
 .b-אושר{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border)}
 .b-נדחה{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
 .b-נופק{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
-.b-ממתין_למשיכה{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.b-ממתין_למשיכה{background:var(--yellow-bg);color:var(--yellow);border-color:var(--yellow-border)}
 .b-נמשך{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
-.b-נמשך_חלקית{background:var(--yellow-bg);color:var(--yellow);border-color:var(--yellow-border)}
+.b-נמשך_חלקית{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border)}
 .b-קוטלג{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border)}
+.b-אין_בלאי{background:var(--gray-bg);color:var(--gray);border-color:var(--gray-border)}
+.b-יש_חלק_תקין_ממתין_למשיכה{background:var(--yellow-bg);color:var(--yellow);border-color:var(--yellow-border)}
+.b-ממתין_לבלאי{background:var(--yellow-bg);color:var(--yellow);border-color:var(--yellow-border)}
+.b-בלאי_ממתין_לאיסוף{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border)}
+.b-בלאי_נשלח{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
 .status-select{margin-top:8px;width:100%;padding:9px;border-radius:8px;border:1.5px solid #333;background:#262626;color:var(--text);font-size:13px}
 .empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:14px}
 
@@ -132,6 +137,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
   <div class="tabs">
     <button id="tabFormBtn" class="tab-btn active" onclick="showTab('form')">הזמנה חדשה</button>
     <button id="tabListBtn" class="tab-btn" onclick="showTab('list')">רשימת הזמנות</button>
+    <button id="tabBlaiBtn" class="tab-btn" onclick="showTab('blai')">דוח בלאי</button>
   </div>
 
   <!-- FORM -->
@@ -152,10 +158,10 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
               <input type="text" name="צ'" required inputmode="numeric">
             </div>
             <div class="field">
-              <label>צ' עומד? <span style="font-weight:400;color:var(--muted)">(עומד = מושבת)</span></label>
-              <select name="צ' עומד" required>
-                <option value="כן">כן</option>
-                <option value="לא">לא</option>
+              <label>מצב כלי</label>
+              <select name="צ' עומד" id="statusVehicleSelect" required>
+                <option value="משבית">משבית</option>
+                <option value="לא משבית">לא משבית</option>
               </select>
             </div>
           </div>
@@ -235,7 +241,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
             </select>
           </div>
           <div class="field hidden" id="blaiField">
-            <label>סטאטוס בלאי</label>
+            <label>סטאטוס בלאי <span style="font-weight:400;color:var(--muted)">(מוצג רק מסטאטוס נופק ואילך)</span></label>
             <select name="סטאטוס בלאי">
               <option>יש חלק תקין ממתין למשיכה</option>
               <option>ממתין לבלאי</option>
@@ -305,6 +311,12 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
     <div id="ordersList" class="items-list"><div class="empty">טוען...</div></div>
   </div>
 
+  <!-- BLAI REPORT -->
+  <div id="blaiScreen" class="screen">
+    <div class="section-label">פריטים שאושרו וממתינים לבלאי בתמורה</div>
+    <div id="blaiList" class="items-list"><div class="empty">טוען...</div></div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -313,7 +325,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPaXiEgtWd81WJtn7KsSnmlnWEmbWw5oB8Ed_CVMLyC1cFTKut40TVEB0Na61zWKX0/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v10.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v11.08.26.1'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -351,12 +363,15 @@ function logout(){
 }
 
 /* ============ TABS ============ */
-function showTab(tab){
+async function showTab(tab){
   document.getElementById('formScreen').classList.toggle('active', tab==='form');
   document.getElementById('listScreen').classList.toggle('active', tab==='list');
+  document.getElementById('blaiScreen').classList.toggle('active', tab==='blai');
   document.getElementById('tabFormBtn').classList.toggle('active', tab==='form');
   document.getElementById('tabListBtn').classList.toggle('active', tab==='list');
-  if(tab==='list') loadOrders();
+  document.getElementById('tabBlaiBtn').classList.toggle('active', tab==='blai');
+  if(tab==='list'){ await loadOrders(); renderOrders(ordersCache); }
+  if(tab==='blai'){ await loadOrders(); renderBlaiReport(); }
 }
 
 /* ============ REASON CHIPS ============ */
@@ -369,16 +384,22 @@ document.getElementById('reasonChips').addEventListener('click', e=>{
 });
 
 /* ============ CONDITIONAL FIELDS ============ */
+const BLAI_ELIGIBLE_STATUSES = ['נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
+function updateBlaiVisibility(){
+  const temura = document.getElementById('temuraSelect').value;
+  const status = document.getElementById('statusSelect').value;
+  const show = temura === 'כן' && BLAI_ELIGIBLE_STATUSES.includes(status);
+  document.getElementById('blaiField').classList.toggle('hidden', !show);
+}
 document.getElementById('statusSelect').addEventListener('change', e=>{
   document.getElementById('rejectField').classList.toggle('hidden', e.target.value !== 'נדחה');
   document.getElementById('partialField').classList.toggle('hidden', e.target.value !== 'נמשך חלקית');
+  updateBlaiVisibility();
 });
 document.getElementById('rejectReason').addEventListener('change', e=>{
   document.getElementById('rejectOther').classList.toggle('hidden', e.target.value !== 'אחר');
 });
-document.getElementById('temuraSelect').addEventListener('change', e=>{
-  document.getElementById('blaiField').classList.toggle('hidden', e.target.value !== 'כן');
-});
+document.getElementById('temuraSelect').addEventListener('change', updateBlaiVisibility);
 
 /* ============ WHATSAPP MESSAGE ============ */
 function buildWhatsAppPreview(){
@@ -391,7 +412,7 @@ function buildWhatsAppPreview(){
   lines.push(`גדוד: ${BATTALION_NAME}`);
   lines.push(`צ: ${fd.get("צ'") || ''}`);
   lines.push(`כלי: ${kli || '-'}`);
-  if(tzomed === 'כן') lines.push('מושבת');
+  if(tzomed === 'משבית') lines.push('מושבת');
   lines.push(`מקט: ${fd.get('מקט') || ''}`);
   lines.push(`כמות: ${fd.get('כמות שהוזמנה') || ''}`);
   lines.push(`שם פריט: ${fd.get('תיאור') || ''}`);
@@ -406,7 +427,45 @@ function copyWaText(){
   navigator.clipboard.writeText(text).then(()=> showToast('הועתק ללוח'));
 }
 
-/* ============ SAVE ORDER ============ */
+/* ============ SAVE / EDIT ORDER ============ */
+let editingId = null;
+
+function editOrder(id){
+  const o = ordersCache.find(x=>x.id===id);
+  if(!o) return;
+  editingId = id;
+  const f = document.getElementById('orderForm');
+  Object.keys(o).forEach(k=>{
+    if(f.elements[k]) f.elements[k].value = o[k];
+  });
+  selectedReasons = new Set((o['סיבה להזמנה']||'').split(',').map(s=>s.trim()).filter(Boolean));
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.classList.toggle('selected', selectedReasons.has(c.dataset.val));
+  });
+  document.getElementById('rejectField').classList.toggle('hidden', o['סטאטוס הזמנה'] !== 'נדחה');
+  document.getElementById('partialField').classList.toggle('hidden', o['סטאטוס הזמנה'] !== 'נמשך חלקית');
+  updateBlaiVisibility();
+  document.querySelector('#orderForm button[type="submit"]').textContent = '💾 עדכן הזמנה';
+  showTab('form');
+}
+
+async function deleteOrderConfirm(id){
+  if(!confirm('למחוק את ההזמנה הזו? הפעולה לא ניתנת לביטול.')) return;
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST',
+      body: new URLSearchParams({action:'delete', data: JSON.stringify({id})})
+    });
+    const json = await res.json();
+    if(!json.success){ showToast('שגיאה במחיקה: ' + (json.error||'')); return; }
+    showToast('ההזמנה נמחקה');
+    ordersCache = ordersCache.filter(o=>o.id!==id);
+    renderOrders(ordersCache);
+  }catch(err){
+    showToast('שגיאה במחיקה — בדוק חיבור');
+  }
+}
+
 document.getElementById('orderForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const fd = new FormData(e.target);
@@ -414,11 +473,13 @@ document.getElementById('orderForm').addEventListener('submit', async e=>{
   fd.forEach((v,k)=> data[k]=v);
   data['סיבה להזמנה'] = [...selectedReasons].join(', ');
   data['הוזמן עי'] = currentUser || '';
+  const action = editingId ? 'update' : 'add';
+  if(editingId) data.id = editingId;
 
   try{
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
-      body: new URLSearchParams({action:'add', data: JSON.stringify(data)})
+      body: new URLSearchParams({action, data: JSON.stringify(data)})
     });
     const json = await res.json();
     if(!json.success){
@@ -426,12 +487,14 @@ document.getElementById('orderForm').addEventListener('submit', async e=>{
       showToast('שגיאה: ' + (json.error || 'לא נשמר בשרת'));
       return;
     }
-    showToast('ההזמנה נשמרה ✓');
+    showToast(editingId ? 'ההזמנה עודכנה ✓' : 'ההזמנה נשמרה ✓');
     e.target.reset();
     selectedReasons.clear();
     document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
     document.getElementById('waBox').classList.remove('show');
     document.querySelector('input[name="תאריך הזמנה"]').valueAsDate = new Date();
+    editingId = null;
+    document.querySelector('#orderForm button[type="submit"]').textContent = '💾 שמור הזמנה';
   }catch(err){
     console.error('Save error:', err);
     showToast('שגיאה בשמירה — בדוק חיבור');
@@ -440,23 +503,39 @@ document.getElementById('orderForm').addEventListener('submit', async e=>{
 
 /* ============ LIST + STATUS UPDATE ============ */
 async function loadOrders(){
-  const list = document.getElementById('ordersList');
-  list.innerHTML = '<div class="empty">טוען...</div>';
   try{
     const res = await fetch(SCRIPT_URL + '?action=get');
     const json = await res.json();
     ordersCache = json.orders || [];
-    renderOrders(ordersCache);
   }catch(err){
-    list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור</div>';
+    ordersCache = null;
   }
+}
+function renderBlaiReport(){
+  const list = document.getElementById('blaiList');
+  if(ordersCache === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור</div>'; return; }
+  const items = ordersCache.filter(o => o['סטאטוס הזמנה']==='אושר' && o['האם בתמורה']==='כן');
+  if(!items.length){ list.innerHTML = '<div class="empty">אין פריטים הממתינים לבלאי כרגע</div>'; return; }
+  list.innerHTML = items.map(o=>`
+    <div class="order-card">
+      <div class="top">
+        <div>
+          <div class="item">${o['תיאור']||''}</div>
+          <div class="meta">מק"ט ${o['מקט']||''} · צ' ${o["צ'"]||''} · כמות ${o['כמות שאושרה']||o['כמות שהוזמנה']||''}</div>
+        </div>
+        <span class="badge b-אושר">אושר · אמור להגיע</span>
+      </div>
+    </div>`).join('');
 }
 function renderOrders(orders){
   const list = document.getElementById('ordersList');
+  if(orders === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור</div>'; return; }
   if(!orders.length){ list.innerHTML = '<div class="empty">אין הזמנות עדיין</div>'; return; }
   const statuses = ['נשלח','הוזמן','אושר','נדחה','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
   list.innerHTML = orders.slice().reverse().map(o=>{
     const badgeClass = 'b-' + (o['סטאטוס הזמנה']||'נשלח').replace(/ /g,'_');
+    const blaiStatus = o['סטאטוס בלאי'];
+    const blaiBadge = blaiStatus ? `<span class="badge b-${blaiStatus.replace(/ /g,'_')}">${blaiStatus}</span>` : '';
     return `
     <div class="order-card">
       <div class="top">
@@ -464,11 +543,18 @@ function renderOrders(orders){
           <div class="item">${o['תיאור']||''}</div>
           <div class="meta">מק"ט ${o['מקט']||''} · צ' ${o["צ'"]||''} · כמות ${o['כמות שהוזמנה']||''}</div>
         </div>
-        <span class="badge ${badgeClass}">${o['סטאטוס הזמנה']||''}</span>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <span class="badge ${badgeClass}">${o['סטאטוס הזמנה']||''}</span>
+          ${blaiBadge}
+        </div>
       </div>
       <select class="status-select" onchange="updateStatus('${o.id}', this.value)">
         ${statuses.map(s=>`<option value="${s}" ${s===o['סטאטוס הזמנה']?'selected':''}>${s}</option>`).join('')}
       </select>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button type="button" class="secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px" onclick="editOrder('${o.id}')">✏️ ערוך</button>
+        <button type="button" class="secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px;border-color:var(--red);color:var(--red)" onclick="deleteOrderConfirm('${o.id}')">🗑️ מחק</button>
+      </div>
     </div>`;
   }).join('');
 }
