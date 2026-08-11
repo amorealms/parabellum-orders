@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Parabellum — מעקב הזמנות</title>
+<style>
+:root {
+  --bg:#111111; --white:#1e1e1e; --border:#2a2a2a;
+  --accent:#f59e0b; --accent-light:#1c1408;
+  --text:#f5f0e8; --muted:#a8a29e;
+  --green:#4ade80; --green-bg:#14532d; --green-border:#166534;
+  --red:#f87171; --red-bg:#450a0a; --red-border:#7f1d1d;
+  --yellow:#fb923c; --yellow-bg:#451a03; --yellow-border:#7c2d12;
+  --orange:#fb923c; --orange-bg:#431407; --orange-border:#9a3412;
+  --purple:#c084fc; --purple-bg:#3b0764; --purple-border:#6b21a8;
+  --blue:#60a5fa; --blue-bg:#0c2a4d; --blue-border:#1e40af;
+  --teal:#2dd4bf; --teal-bg:#042f2e; --teal-border:#0f766e;
+  --gray:#a8a29e; --gray-bg:#292524; --gray-border:#44403c;
+  --r:10px; --sh:0 1px 4px rgba(0,0,0,0.4);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;min-height:100vh;padding-bottom:32px}
+
+/* LOGIN */
+.login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:14px}
+.login-logo{font-size:52px}
+.login-title{font-size:24px;font-weight:800}
+.login-sub{font-size:14px;color:var(--muted);margin-bottom:4px}
+.login-card{background:#1e1e1e;border-radius:16px;padding:24px;width:100%;max-width:360px;box-shadow:0 2px 20px rgba(0,0,0,0.6);border:1px solid #2a2a2a}
+.login-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;display:block;text-transform:uppercase;letter-spacing:.5px}
+.name-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.name-btn{padding:12px 8px;border-radius:8px;border:1.5px solid #333;background:#262626;color:#d6d3d1;font-size:14px;font-weight:700;cursor:pointer;transition:all .12s;text-align:center}
+.name-btn.sel{background:rgba(245,158,11,.15);border-color:var(--accent);color:var(--accent)}
+.name-input{width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);color:var(--text);font-size:15px;margin-bottom:12px}
+.login-btn{width:100%;padding:14px;background:var(--accent);color:#111;border:none;border-radius:var(--r);font-size:16px;font-weight:700;cursor:pointer}
+.login-btn:disabled{background:#2a2a2a;color:#57534e;cursor:not-allowed}
+
+/* TOPBAR */
+.topbar{background:#1a1a1a;border-bottom:2px solid var(--accent);color:var(--accent);padding:0 16px;height:52px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200}
+.topbar-title{font-size:16px;font-weight:700;flex:1}
+.user-badge{background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;white-space:nowrap;cursor:pointer}
+
+/* TABS */
+.tabs{display:flex;gap:8px;padding:10px 14px;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:52px;z-index:190}
+.tab-btn{flex:1;padding:10px;border-radius:var(--r);border:1.5px solid var(--border);background:#1a1a1a;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer}
+.tab-btn.active{background:rgba(245,158,11,.15);border-color:var(--accent);color:var(--accent)}
+
+.screen{display:none}.screen.active{display:block}
+.section-label{padding:14px 16px 6px;font-size:11px;font-weight:700;color:#57534e;letter-spacing:.6px;text-transform:uppercase}
+
+/* FORM */
+.form-wrap{padding:12px 14px 4px}
+fieldset{border:1.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:14px;background:var(--white)}
+legend{color:var(--accent);font-size:12px;font-weight:700;padding:0 6px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+.field input, .field select, .field textarea{width:100%;padding:11px 14px;background:#262626;border:1.5px solid #333;border-radius:var(--r);color:var(--text);font-size:15px}
+.field textarea{resize:vertical;min-height:60px}
+.row2{display:flex;gap:10px}
+.row2>.field{flex:1}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:8px 14px;border-radius:999px;border:1.5px solid #333;background:#262626;color:var(--muted);font-size:13px;cursor:pointer}
+.chip.selected{background:rgba(245,158,11,.15);border-color:var(--accent);color:var(--accent);font-weight:700}
+.hidden{display:none!important}
+button.primary{width:100%;padding:14px;border:none;border-radius:var(--r);background:var(--accent);color:#111;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px}
+button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:14px;font-weight:700;margin-top:8px;cursor:pointer}
+
+.wa-box{background:#1a1a1a;border:1.5px dashed var(--accent);border-radius:var(--r);padding:12px;margin:14px 14px 0;display:none}
+.wa-box.show{display:block}
+.wa-box pre{white-space:pre-wrap;font-family:inherit;font-size:14px;margin:0 0 10px;color:var(--text)}
+.wa-actions{display:flex;gap:8px}
+.wa-actions a,.wa-actions button{flex:1;text-align:center;padding:10px;border-radius:var(--r);text-decoration:none;font-size:13px;border:1.5px solid var(--border);cursor:pointer;font-weight:700}
+.wa-actions .send{background:#22c55e;color:#08170a;border-color:#22c55e}
+.wa-actions .copy{background:#262626;color:var(--text)}
+
+/* LIST */
+.search-wrap{padding:10px 14px 0}
+.search-input{width:100%;padding:11px 14px;background:#262626;border:1.5px solid #333;border-radius:var(--r);color:var(--text);font-size:15px;box-shadow:var(--sh)}
+.items-list{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.order-card{background:#1e1e1e;border:1.5px solid #2a2a2a;border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh)}
+.order-card .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.order-card .item{font-size:15px;font-weight:700;line-height:1.3}
+.order-card .meta{font-size:12px;color:var(--muted);margin-top:3px;font-family:monospace}
+.badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;white-space:nowrap;border:1.5px solid transparent}
+.b-נשלח{background:var(--gray-bg);color:var(--gray);border-color:var(--gray-border)}
+.b-הוזמן{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border)}
+.b-אושר{background:var(--orange-bg);color:var(--orange);border-color:var(--orange-border)}
+.b-נדחה{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+.b-נופק{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+.b-ממתין_למשיכה{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.b-נמשך{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+.b-נמשך_חלקית{background:var(--yellow-bg);color:var(--yellow);border-color:var(--yellow-border)}
+.b-קוטלג{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border)}
+.status-select{margin-top:8px;width:100%;padding:9px;border-radius:8px;border:1.5px solid #333;background:#262626;color:var(--text);font-size:13px}
+.empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:14px}
+
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:400}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-logo">📦</div>
+  <div class="login-title" style="color:var(--accent)">Parabellum — הזמנות</div>
+  <div class="login-sub">יחסם 179 · מעקב הזמנות חלפים</div>
+  <div class="login-sub" id="versionBadgeLogin" style="font-size:11px;opacity:.6"></div>
+  <div class="login-card">
+    <span class="login-label">מי אתה?</span>
+    <div class="name-grid">
+      <button class="name-btn" data-name="אלכסיי" onclick="selectName(this)">אלכסיי</button>
+      <button class="name-btn" data-name="עידן" onclick="selectName(this)">עידן</button>
+      <button class="name-btn" data-name="שילת" onclick="selectName(this)">שילת</button>
+      <button class="name-btn" data-name="יהונתן" onclick="selectName(this)">יהונתן</button>
+      <button class="name-btn" data-name="הראל" onclick="selectName(this)" style="grid-column:span 2">הראל</button>
+    </div>
+    <span class="login-label">או הקלד שם:</span>
+    <input type="text" class="name-input" id="nameInput" placeholder="שם..." oninput="onNameType()">
+    <button class="login-btn" id="loginBtn" onclick="doLogin()" disabled>כניסה →</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none">
+  <div class="topbar">
+    <div class="topbar-title">מעקב הזמנות <span id="versionBadgeTop" style="font-size:10px;color:var(--muted);font-weight:400"></span></div>
+    <div class="user-badge" id="userBadge" onclick="logout()">—</div>
+  </div>
+
+  <div class="tabs">
+    <button id="tabFormBtn" class="tab-btn active" onclick="showTab('form')">הזמנה חדשה</button>
+    <button id="tabListBtn" class="tab-btn" onclick="showTab('list')">רשימת הזמנות</button>
+  </div>
+
+  <!-- FORM -->
+  <div id="formScreen" class="screen active">
+    <div class="form-wrap">
+      <form id="orderForm">
+
+        <div class="field">
+          <label>תאריך הזמנה</label>
+          <input type="date" name="תאריך הזמנה" required>
+        </div>
+
+        <fieldset>
+          <legend>שיוך לכלי</legend>
+          <div class="row2">
+            <div class="field">
+              <label>צ'</label>
+              <input type="text" name="צ'" required inputmode="numeric">
+            </div>
+            <div class="field">
+              <label>צ' עומד? <span style="font-weight:400;color:var(--muted)">(עומד = מושבת)</span></label>
+              <select name="צ' עומד" required>
+                <option value="כן">כן</option>
+                <option value="לא">לא</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>מס' לוג (אם קיים)</label>
+            <input type="text" name="מס' לוג" placeholder="לדוגמה: 836481-03">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>סוג כלי</label>
+              <select name="סוג כלי">
+                <option value="">בחר...</option>
+                <option>טנק</option>
+                <option>משאית</option>
+                <option>רכב</option>
+                <option>נשק</option>
+                <option>כלים</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>מודל</label>
+              <input type="text" name="מודל" list="modelsList" placeholder="האמר / מרכבה...">
+              <datalist id="modelsList">
+                <option value="מרכבה"><option value="האמר"><option value="טטרה">
+                <option value="אושקוש"><option value="פלסר"><option value="גנרי">
+                <option value="ריאו"><option value="פורד"><option value="מרצדס"><option value="M16">
+              </datalist>
+            </div>
+          </div>
+          <div class="field">
+            <label>גרסא</label>
+            <input type="text" name="גרסא" placeholder="A0 / A1 / A2 / ס'3 / ס'4">
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>הפריט</legend>
+          <div class="field">
+            <label>מק"ט</label>
+            <input type="text" name="מקט" required>
+          </div>
+          <div class="field">
+            <label>תיאור / שם פריט</label>
+            <input type="text" name="תיאור" required>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>כמות שהוזמנה</label>
+              <input type="number" name="כמות שהוזמנה" min="1" required>
+            </div>
+            <div class="field">
+              <label>כמות שאושרה</label>
+              <input type="number" name="כמות שאושרה" min="0">
+            </div>
+          </div>
+          <div class="field">
+            <label>סיבה להזמנה</label>
+            <div class="chips" id="reasonChips">
+              <div class="chip" data-val="מילוי חוסרים">מילוי חוסרים</div>
+              <div class="chip" data-val="נדרש למשימה">נדרש למשימה</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>חלק מיוחד</label>
+            <select name="חלק מיוחד">
+              <option value="רגיל">רגיל</option>
+              <option value="מזקום">מזקו"ם</option>
+              <option value="בקש">בק"ש</option>
+              <option value="צמיג">צמיג</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>האם בתמורה</label>
+            <select name="האם בתמורה" id="temuraSelect">
+              <option value="לא">לא</option>
+              <option value="כן">כן</option>
+            </select>
+          </div>
+          <div class="field hidden" id="blaiField">
+            <label>סטאטוס בלאי</label>
+            <select name="סטאטוס בלאי">
+              <option>יש חלק תקין ממתין למשיכה</option>
+              <option>ממתין לבלאי</option>
+              <option>בלאי ממתין לאיסוף</option>
+              <option>בלאי נשלח</option>
+              <option>אין בלאי</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>סטאטוס</legend>
+          <div class="field">
+            <label>סטאטוס הזמנה</label>
+            <select name="סטאטוס הזמנה" id="statusSelect">
+              <option>נשלח</option>
+              <option>הוזמן</option>
+              <option>אושר</option>
+              <option>נדחה</option>
+              <option>נופק</option>
+              <option>ממתין למשיכה</option>
+              <option>נמשך</option>
+              <option>נמשך חלקית</option>
+              <option>קוטלג</option>
+            </select>
+          </div>
+          <div class="field hidden" id="rejectField">
+            <label>סיבת דחייה</label>
+            <select name="סיבת דחייה" id="rejectReason">
+              <option value="אין במלאי">אין במלאי</option>
+              <option value="נדרש אישור בוחן">נדרש אישור בוחן</option>
+              <option value="אחר">אחר</option>
+            </select>
+            <input type="text" name="הערות דחייה" id="rejectOther" placeholder="פרט..." style="margin-top:8px" class="hidden">
+          </div>
+          <div class="field hidden" id="partialField">
+            <label>כמות שנמשכה (מצטבר)</label>
+            <input type="number" name="כמות שנמשכה" min="0">
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label>הערות</label>
+          <textarea name="הערות"></textarea>
+        </div>
+
+        <button type="button" class="primary" onclick="buildWhatsAppPreview()">הפק הודעת וואטסאפ</button>
+
+        <div class="wa-box" id="waBox">
+          <pre id="waText"></pre>
+          <div class="wa-actions">
+            <button type="button" class="copy" onclick="copyWaText()">העתק</button>
+            <a class="send" id="waSendLink" target="_blank">שלח בוואטסאפ</a>
+          </div>
+        </div>
+
+        <button type="submit" class="secondary">💾 שמור הזמנה</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- LIST -->
+  <div id="listScreen" class="screen">
+    <div class="search-wrap">
+      <input type="text" id="search" class="search-input" placeholder="חיפוש לפי צ', מק&quot;ט, תיאור...">
+    </div>
+    <div id="ordersList" class="items-list"><div class="empty">טוען...</div></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ CONFIG ============ */
+const SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+const BATTALION_NAME = 'יחסם 179';
+const VERSION = 'v10.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
+document.getElementById('versionBadgeLogin').textContent = VERSION;
+document.getElementById('versionBadgeTop').textContent = VERSION;
+let currentUser = null;
+let ordersCache = [];
+let selectedReasons = new Set();
+
+/* ============ LOGIN ============ */
+function selectName(btn){
+  document.querySelectorAll('.name-btn').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  document.getElementById('nameInput').value = '';
+  currentUser = btn.dataset.name;
+  document.getElementById('loginBtn').disabled = false;
+}
+function onNameType(){
+  const val = document.getElementById('nameInput').value.trim();
+  document.querySelectorAll('.name-btn').forEach(b=>b.classList.remove('sel'));
+  currentUser = val;
+  document.getElementById('loginBtn').disabled = !val;
+}
+function doLogin(){
+  if(!currentUser) return;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('userBadge').textContent = currentUser;
+  showTab('form');
+}
+function logout(){
+  document.getElementById('mainApp').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  currentUser = null;
+  document.getElementById('loginBtn').disabled = true;
+  document.getElementById('nameInput').value = '';
+  document.querySelectorAll('.name-btn').forEach(b=>b.classList.remove('sel'));
+}
+
+/* ============ TABS ============ */
+function showTab(tab){
+  document.getElementById('formScreen').classList.toggle('active', tab==='form');
+  document.getElementById('listScreen').classList.toggle('active', tab==='list');
+  document.getElementById('tabFormBtn').classList.toggle('active', tab==='form');
+  document.getElementById('tabListBtn').classList.toggle('active', tab==='list');
+  if(tab==='list') loadOrders();
+}
+
+/* ============ REASON CHIPS ============ */
+document.getElementById('reasonChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip');
+  if(!chip) return;
+  const val = chip.dataset.val;
+  if(selectedReasons.has(val)){ selectedReasons.delete(val); chip.classList.remove('selected'); }
+  else { selectedReasons.add(val); chip.classList.add('selected'); }
+});
+
+/* ============ CONDITIONAL FIELDS ============ */
+document.getElementById('statusSelect').addEventListener('change', e=>{
+  document.getElementById('rejectField').classList.toggle('hidden', e.target.value !== 'נדחה');
+  document.getElementById('partialField').classList.toggle('hidden', e.target.value !== 'נמשך חלקית');
+});
+document.getElementById('rejectReason').addEventListener('change', e=>{
+  document.getElementById('rejectOther').classList.toggle('hidden', e.target.value !== 'אחר');
+});
+document.getElementById('temuraSelect').addEventListener('change', e=>{
+  document.getElementById('blaiField').classList.toggle('hidden', e.target.value !== 'כן');
+});
+
+/* ============ WHATSAPP MESSAGE ============ */
+function buildWhatsAppPreview(){
+  const f = document.getElementById('orderForm');
+  const fd = new FormData(f);
+  const tzomed = fd.get("צ' עומד");
+  const kli = [fd.get('סוג כלי'), fd.get('מודל')].filter(Boolean).join(' ');
+
+  let lines = [];
+  lines.push(`גדוד: ${BATTALION_NAME}`);
+  lines.push(`צ: ${fd.get("צ'") || ''}`);
+  lines.push(`כלי: ${kli || '-'}`);
+  if(tzomed === 'כן') lines.push('מושבת');
+  lines.push(`מקט: ${fd.get('מקט') || ''}`);
+  lines.push(`כמות: ${fd.get('כמות שהוזמנה') || ''}`);
+  lines.push(`שם פריט: ${fd.get('תיאור') || ''}`);
+
+  const text = lines.join('\n');
+  document.getElementById('waText').textContent = text;
+  document.getElementById('waBox').classList.add('show');
+  document.getElementById('waSendLink').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(text);
+}
+function copyWaText(){
+  const text = document.getElementById('waText').textContent;
+  navigator.clipboard.writeText(text).then(()=> showToast('הועתק ללוח'));
+}
+
+/* ============ SAVE ORDER ============ */
+document.getElementById('orderForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const data = {};
+  fd.forEach((v,k)=> data[k]=v);
+  data['סיבה להזמנה'] = [...selectedReasons].join(', ');
+  data['הוזמן עי'] = currentUser || '';
+
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST',
+      body: new URLSearchParams({action:'add', data: JSON.stringify(data)})
+    });
+    const json = await res.json();
+    if(!json.success){
+      console.error('Save failed:', json.error);
+      showToast('שגיאה: ' + (json.error || 'לא נשמר בשרת'));
+      return;
+    }
+    showToast('ההזמנה נשמרה ✓');
+    e.target.reset();
+    selectedReasons.clear();
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
+    document.getElementById('waBox').classList.remove('show');
+    document.querySelector('input[name="תאריך הזמנה"]').valueAsDate = new Date();
+  }catch(err){
+    console.error('Save error:', err);
+    showToast('שגיאה בשמירה — בדוק חיבור');
+  }
+});
+
+/* ============ LIST + STATUS UPDATE ============ */
+async function loadOrders(){
+  const list = document.getElementById('ordersList');
+  list.innerHTML = '<div class="empty">טוען...</div>';
+  try{
+    const res = await fetch(SCRIPT_URL + '?action=get');
+    const json = await res.json();
+    ordersCache = json.orders || [];
+    renderOrders(ordersCache);
+  }catch(err){
+    list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור</div>';
+  }
+}
+function renderOrders(orders){
+  const list = document.getElementById('ordersList');
+  if(!orders.length){ list.innerHTML = '<div class="empty">אין הזמנות עדיין</div>'; return; }
+  const statuses = ['נשלח','הוזמן','אושר','נדחה','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
+  list.innerHTML = orders.slice().reverse().map(o=>{
+    const badgeClass = 'b-' + (o['סטאטוס הזמנה']||'נשלח').replace(/ /g,'_');
+    return `
+    <div class="order-card">
+      <div class="top">
+        <div>
+          <div class="item">${o['תיאור']||''}</div>
+          <div class="meta">מק"ט ${o['מקט']||''} · צ' ${o["צ'"]||''} · כמות ${o['כמות שהוזמנה']||''}</div>
+        </div>
+        <span class="badge ${badgeClass}">${o['סטאטוס הזמנה']||''}</span>
+      </div>
+      <select class="status-select" onchange="updateStatus('${o.id}', this.value)">
+        ${statuses.map(s=>`<option value="${s}" ${s===o['סטאטוס הזמנה']?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+}
+async function updateStatus(id, newStatus){
+  try{
+    await fetch(SCRIPT_URL, {
+      method:'POST',
+      body: new URLSearchParams({action:'update', data: JSON.stringify({id, 'סטאטוס הזמנה': newStatus})})
+    });
+    showToast('סטאטוס עודכן');
+    const o = ordersCache.find(x=>x.id===id);
+    if(o) o['סטאטוס הזמנה'] = newStatus;
+    renderOrders(ordersCache);
+  }catch(err){
+    showToast('שגיאה בעדכון');
+  }
+}
+document.getElementById('search').addEventListener('input', e=>{
+  const q = e.target.value.trim();
+  if(!q){ renderOrders(ordersCache); return; }
+  const filtered = ordersCache.filter(o =>
+    (o["צ'"]||'').includes(q) || (o['מקט']||'').includes(q) || (o['תיאור']||'').includes(q)
+  );
+  renderOrders(filtered);
+});
+
+/* ============ TOAST ============ */
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+document.querySelector('input[name="תאריך הזמנה"]').valueAsDate = new Date();
+</script>
+</body>
+</html>
