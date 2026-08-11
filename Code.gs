@@ -4,14 +4,18 @@
  *
  * SETUP:
  * 1. Create a new Google Sheet. Rename the first tab to exactly: Orders
- * 2. In row 1, paste these headers (in this exact order), one per column A→V:
+ * 2. In row 1, paste these headers (in this exact order), one per column A→W:
  *    id | תאריך הזמנה | מס' לוג | צ' | צ' עומד | מקט | תיאור | סוג כלי | מודל | גרסא |
  *    סיבה להזמנה | כמות שהוזמנה | כמות שאושרה | חלק מיוחד | האם בתמורה |
- *    סטאטוס הזמנה | סיבת דחייה | כמות שנמשכה | סטאטוס בלאי | הוזמן עי | הערות | עודכן
+ *    סטאטוס הזמנה | סיבת דחייה | כמות שנמשכה | סטאטוס בלאי | הוזמן עי | הערות |
+ *    עודכן | לוג סטאטוס
  * 3. Extensions → Apps Script. Delete any starter code, paste this file's contents.
  * 4. Deploy → New deployment → Web app.
  *    Execute as: Me.  Who has access: Anyone.
  * 5. Copy the Web App URL and paste it into SCRIPT_URL in orders.html
+ *
+ * NOTE: if you already had this Sheet set up before, just add one new header
+ * in column W: לוג סטאטוס — existing rows will just start with an empty log.
  */
 
 const SHEET_NAME = 'Orders';
@@ -64,12 +68,19 @@ function getOrders() {
   return jsonResponse({ orders: orders });
 }
 
+function formatLogTimestamp_() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Jerusalem', 'dd.MM.yy HH:mm');
+}
+
 function addOrder(data) {
   const sheet = getSheet_();
   const headers = getHeaders_(sheet);
   const id = 'ORD-' + new Date().getTime();
   data.id = id;
   data['עודכן'] = new Date().toISOString();
+  const who = data['עודכן עי'] || data['הוזמן עי'] || 'לא ידוע';
+  const initialStatus = data['סטאטוס הזמנה'] || 'נשלח';
+  data['לוג סטאטוס'] = `${formatLogTimestamp_()} — נוצרה, סטאטוס: ${initialStatus} (${who})`;
   const row = headers.map(h => (data[h] !== undefined ? data[h] : ''));
   sheet.appendRow(row);
   return jsonResponse({ success: true, id: id });
@@ -80,9 +91,21 @@ function updateOrder(data) {
   const values = sheet.getDataRange().getValues();
   const headers = values[0];
   const idCol = headers.indexOf('id');
+  const statusCol = headers.indexOf('סטאטוס הזמנה');
+  const logCol = headers.indexOf('לוג סטאטוס');
   for (let i = 1; i < values.length; i++) {
     if (values[i][idCol] === data.id) {
       data['עודכן'] = new Date().toISOString();
+
+      const oldStatus = values[i][statusCol];
+      const newStatus = data['סטאטוס הזמנה'];
+      if (newStatus !== undefined && newStatus !== oldStatus && logCol !== -1) {
+        const who = data['עודכן עי'] || 'לא ידוע';
+        const existingLog = values[i][logCol] || '';
+        const entry = `${formatLogTimestamp_()} — ${oldStatus || '—'} ← ${newStatus} (${who})`;
+        data['לוג סטאטוס'] = existingLog ? existingLog + '\n' + entry : entry;
+      }
+
       const row = headers.map((h, colIdx) =>
         data[h] !== undefined ? data[h] : values[i][colIdx]
       );
