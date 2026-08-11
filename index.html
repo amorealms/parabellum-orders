@@ -307,6 +307,26 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
   <div id="listScreen" class="screen">
     <div class="search-wrap">
       <input type="text" id="search" class="search-input" placeholder="חיפוש לפי צ', מק&quot;ט, תיאור...">
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <input type="date" id="filterDate" class="search-input" style="flex:1;min-width:130px;font-size:13px;padding:9px">
+        <input type="text" id="filterTz" placeholder="סינון לפי צ'" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+        <input type="text" id="filterModel" placeholder="סינון לפי מודל" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <select id="filterStatus" class="search-input" style="flex:1;min-width:110px;font-size:13px;padding:9px">
+          <option value="">כל הסטאטוסים</option>
+          <option>נשלח</option><option>הוזמן</option><option>אושר</option><option>נדחה</option>
+          <option>נופק</option><option>ממתין למשיכה</option><option>נמשך</option><option>נמשך חלקית</option><option>קוטלג</option>
+        </select>
+        <select id="filterSpecial" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+          <option value="">כל החלקים</option>
+          <option value="רגיל">רגיל</option><option value="מזקום">מזקו"ם</option><option value="בקש">בק"ש</option><option value="צמיג">צמיג</option>
+        </select>
+        <select id="filterTemura" class="search-input" style="flex:1;min-width:90px;font-size:13px;padding:9px">
+          <option value="">הכל</option><option value="כן">בתמורה</option><option value="לא">לא בתמורה</option>
+        </select>
+      </div>
+      <button type="button" class="secondary" style="margin-top:8px" onclick="clearFilters()">נקה סינון</button>
     </div>
     <div id="ordersList" class="items-list"><div class="empty">טוען...</div></div>
   </div>
@@ -325,7 +345,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPaXiEgtWd81WJtn7KsSnmlnWEmbWw5oB8Ed_CVMLyC1cFTKut40TVEB0Na61zWKX0/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v11.08.26.1'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v11.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -541,8 +561,7 @@ function renderOrders(orders){
   const statuses = ['נשלח','הוזמן','אושר','נדחה','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
   list.innerHTML = orders.slice().reverse().map(o=>{
     const badgeClass = 'b-' + (o['סטאטוס הזמנה']||'נשלח').replace(/ /g,'_');
-    const blaiStatus = o['סטאטוס בלאי'];
-    const blaiBadge = blaiStatus ? `<span class="badge b-${blaiStatus.replace(/ /g,'_')}">${blaiStatus}</span>` : '';
+    const blaiBadge = o['האם בתמורה']==='כן' ? `<span class="badge" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)">בתמורה</span>` : '';
     return `
     <div class="order-card">
       <div class="top">
@@ -565,10 +584,32 @@ function renderOrders(orders){
       ${o['לוג סטאטוס'] ? `
       <details style="margin-top:8px">
         <summary style="font-size:11px;color:var(--muted);cursor:pointer">היסטוריית סטאטוסים</summary>
-        <pre style="white-space:pre-wrap;font-size:11px;color:var(--muted);margin-top:6px;font-family:inherit">${o['לוג סטאטוס']}</pre>
+        ${renderStatusLogTable(o['לוג סטאטוס'])}
       </details>` : ''}
     </div>`;
   }).join('');
+}
+function renderStatusLogTable(logText){
+  const rows = logText.split('\n').filter(Boolean).map(line=>{
+    const parts = line.split('|');
+    return { date: parts[0]||'', status: parts[1]||'', who: parts[2]||'' };
+  });
+  if(!rows.length) return '';
+  return `
+  <table style="width:100%;margin-top:6px;font-size:11px;color:var(--muted);border-collapse:collapse">
+    <thead><tr style="text-align:right;color:var(--accent)">
+      <th style="padding:4px 6px;font-weight:700">תאריך</th>
+      <th style="padding:4px 6px;font-weight:700">סטאטוס</th>
+      <th style="padding:4px 6px;font-weight:700">עודכן ע"י</th>
+    </tr></thead>
+    <tbody>
+      ${rows.map(r=>`<tr style="border-top:1px solid var(--border)">
+        <td style="padding:4px 6px">${r.date}</td>
+        <td style="padding:4px 6px">${r.status}</td>
+        <td style="padding:4px 6px">${r.who}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
 }
 async function updateStatus(id, newStatus){
   try{
@@ -588,13 +629,49 @@ async function updateStatus(id, newStatus){
     showToast('שגיאה בעדכון — בדוק חיבור');
   }
 }
-document.getElementById('search').addEventListener('input', e=>{
-  const q = e.target.value.trim();
-  if(!q){ renderOrders(ordersCache); return; }
-  const filtered = ordersCache.filter(o =>
-    (o["צ'"]||'').includes(q) || (o['מקט']||'').includes(q) || (o['תיאור']||'').includes(q)
-  );
+function applyFilters(){
+  if(ordersCache === null){ return; }
+  const q = document.getElementById('search').value.trim();
+  const fDate = document.getElementById('filterDate').value;
+  const fTz = document.getElementById('filterTz').value.trim();
+  const fModel = document.getElementById('filterModel').value.trim();
+  const fStatus = document.getElementById('filterStatus').value;
+  const fSpecial = document.getElementById('filterSpecial').value;
+  const fTemura = document.getElementById('filterTemura').value;
+
+  const filtered = ordersCache.filter(o=>{
+    if(q){
+      const hay = String(o["צ'"]||'') + String(o['מקט']||'') + String(o['תיאור']||'');
+      if(!hay.includes(q)) return false;
+    }
+    if(fDate){
+      const orderDate = String(o['תאריך הזמנה']||'').split('T')[0];
+      if(orderDate !== fDate) return false;
+    }
+    if(fTz && !String(o["צ'"]||'').includes(fTz)) return false;
+    if(fModel && !String(o['מודל']||'').includes(fModel)) return false;
+    if(fStatus && o['סטאטוס הזמנה'] !== fStatus) return false;
+    if(fSpecial && o['חלק מיוחד'] !== fSpecial) return false;
+    if(fTemura && o['האם בתמורה'] !== fTemura) return false;
+    return true;
+  });
   renderOrders(filtered);
+}
+function clearFilters(){
+  document.getElementById('search').value = '';
+  document.getElementById('filterDate').value = '';
+  document.getElementById('filterTz').value = '';
+  document.getElementById('filterModel').value = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterSpecial').value = '';
+  document.getElementById('filterTemura').value = '';
+  renderOrders(ordersCache);
+}
+['search','filterTz','filterModel'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', applyFilters);
+});
+['filterDate','filterStatus','filterSpecial','filterTemura'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', applyFilters);
 });
 
 /* ============ TOAST ============ */
