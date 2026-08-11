@@ -68,8 +68,8 @@ function getOrders() {
   return jsonResponse({ orders: orders });
 }
 
-function formatLogTimestamp_() {
-  return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Jerusalem', 'dd.MM.yy HH:mm');
+function formatLogDate_() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Jerusalem', 'dd/MM/yyyy');
 }
 
 function addOrder(data) {
@@ -80,7 +80,7 @@ function addOrder(data) {
   data['עודכן'] = new Date().toISOString();
   const who = data['עודכן עי'] || data['הוזמן עי'] || 'לא ידוע';
   const initialStatus = data['סטאטוס הזמנה'] || 'נשלח';
-  data['לוג סטאטוס'] = `${formatLogTimestamp_()} — נוצרה, סטאטוס: ${initialStatus} (${who})`;
+  data['לוג סטאטוס'] = `${formatLogDate_()}|${initialStatus}|${who}`;
   const row = headers.map(h => (data[h] !== undefined ? data[h] : ''));
   sheet.appendRow(row);
   return jsonResponse({ success: true, id: id });
@@ -102,7 +102,7 @@ function updateOrder(data) {
       if (newStatus !== undefined && newStatus !== oldStatus && logCol !== -1) {
         const who = data['עודכן עי'] || 'לא ידוע';
         const existingLog = values[i][logCol] || '';
-        const entry = `${formatLogTimestamp_()} — ${oldStatus || '—'} ← ${newStatus} (${who})`;
+        const entry = `${formatLogDate_()}|${newStatus}|${who}`;
         data['לוג סטאטוס'] = existingLog ? existingLog + '\n' + entry : entry;
       }
 
