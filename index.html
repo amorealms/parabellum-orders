@@ -109,6 +109,15 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:400}
 .toast.show{opacity:1}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px}
+.modal-overlay.hidden{display:none}
+.modal-card{background:var(--white);border:1.5px solid var(--border);border-radius:16px;padding:18px;width:100%;max-width:420px;max-height:85vh;overflow-y:auto;box-shadow:0 4px 30px rgba(0,0,0,.6)}
+.modal-close{float:left;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1}
+.detail-table{width:100%;font-size:13px;border-collapse:collapse}
+.detail-table td{padding:5px 6px;vertical-align:top}
+.detail-table td:first-child{color:var(--muted);white-space:nowrap;width:40%}
+.detail-table tr:nth-child(even){background:rgba(255,255,255,.03)}
 </style>
 </head>
 <body>
@@ -158,57 +167,10 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
         </div>
 
         <fieldset>
-          <legend>שיוך לכלי</legend>
-          <div class="row2">
-            <div class="field">
-              <label>צ'</label>
-              <input type="text" name="צ'" required inputmode="numeric">
-            </div>
-            <div class="field">
-              <label>מצב כלי</label>
-              <select name="צ' עומד" id="statusVehicleSelect" required>
-                <option value="משבית">משבית</option>
-                <option value="לא משבית">לא משבית</option>
-              </select>
-            </div>
-          </div>
-          <div class="field">
-            <label>מס' לוג (אם קיים)</label>
-            <input type="text" name="מס' לוג" placeholder="לדוגמה: 836481-03">
-          </div>
-          <div class="row2">
-            <div class="field">
-              <label>סוג כלי</label>
-              <select name="סוג כלי">
-                <option value="">בחר...</option>
-                <option>טנק</option>
-                <option>משאית</option>
-                <option>רכב</option>
-                <option>נשק</option>
-                <option>כלים</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>מודל</label>
-              <input type="text" name="מודל" list="modelsList" placeholder="האמר / מרכבה...">
-              <datalist id="modelsList">
-                <option value="מרכבה"><option value="האמר"><option value="טטרה">
-                <option value="אושקוש"><option value="פלסר"><option value="גנרי">
-                <option value="ריאו"><option value="פורד"><option value="מרצדס"><option value="M16">
-              </datalist>
-            </div>
-          </div>
-          <div class="field">
-            <label>גרסא</label>
-            <input type="text" name="גרסא" placeholder="A0 / A1 / A2 / ס'3 / ס'4">
-          </div>
-        </fieldset>
-
-        <fieldset>
           <legend>הפריט</legend>
           <div class="field">
             <label>מק"ט</label>
-            <input type="text" name="מקט" required>
+            <input type="text" name="מקט" required inputmode="numeric" pattern="\d{9}" maxlength="9" title="מק&quot;ט חייב להיות מספרי בן 9 ספרות בדיוק">
           </div>
           <div class="field">
             <label>תיאור / שם פריט</label>
@@ -256,6 +218,53 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
               <option>בלאי נשלח</option>
               <option>אין בלאי</option>
             </select>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>שיוך לכלי</legend>
+          <div class="row2">
+            <div class="field">
+              <label>צ'</label>
+              <input type="text" name="צ'" required inputmode="numeric">
+            </div>
+            <div class="field">
+              <label>מצב כלי</label>
+              <select name="צ' עומד" id="statusVehicleSelect" required>
+                <option value="משבית">משבית</option>
+                <option value="לא משבית">לא משבית</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>מס' לוג (אם קיים)</label>
+            <input type="text" name="מס' לוג" placeholder="לדוגמה: 836481-03">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label>סוג כלי</label>
+              <select name="סוג כלי">
+                <option value="">בחר...</option>
+                <option>טנק</option>
+                <option>משאית</option>
+                <option>רכב</option>
+                <option>נשק</option>
+                <option>כלים</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>מודל</label>
+              <input type="text" name="מודל" list="modelsList" placeholder="האמר / מרכבה...">
+              <datalist id="modelsList">
+                <option value="מרכבה"><option value="האמר"><option value="טטרה">
+                <option value="אושקוש"><option value="פלסר"><option value="גנרי">
+                <option value="ריאו"><option value="פורד"><option value="מרצדס"><option value="M16">
+              </datalist>
+            </div>
+          </div>
+          <div class="field">
+            <label>גרסא</label>
+            <input type="text" name="גרסא" placeholder="A0 / A1 / A2 / ס'3 / ס'4">
           </div>
         </fieldset>
 
@@ -346,13 +355,24 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 
 </div>
 
+<div class="modal-overlay hidden" id="detailModal" onclick="if(event.target===this) closeDetail()">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeDetail()">✕</button>
+    <div id="detailContent"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button type="button" class="secondary" style="margin-top:0" onclick="editFromDetail()">✏️ ערוך</button>
+      <button type="button" class="secondary" style="margin-top:0" onclick="closeDetail()">חזרה לרשימה</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPaXiEgtWd81WJtn7KsSnmlnWEmbWw5oB8Ed_CVMLyC1cFTKut40TVEB0Na61zWKX0/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v11.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v11.08.26.3'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -469,7 +489,15 @@ function editOrder(id){
     if(el.type === 'date' && typeof val === 'string' && val.includes('T')){
       val = val.split('T')[0]; // strip ISO timestamp down to YYYY-MM-DD
     }
-    el.value = val;
+    if(typeof val === 'boolean'){
+      // Sheets sometimes returns actual booleans for כן/לא-style cells instead of text
+      val = val ? 'כן' : 'לא';
+    }
+    el.value = String(val ?? '');
+    // if the select silently failed to match any option (leftover stale format), log it for visibility
+    if(el.tagName === 'SELECT' && el.value !== String(val) && val !== '' && val !== undefined){
+      console.warn(`editOrder: could not match value "${val}" to any option for field "${k}" — select reverted to "${el.value}"`);
+    }
   });
   selectedReasons = new Set((o['סיבה להזמנה']||'').split(',').map(s=>s.trim()).filter(Boolean));
   document.querySelectorAll('.chip').forEach(c=>{
@@ -480,6 +508,52 @@ function editOrder(id){
   updateBlaiVisibility();
   document.querySelector('#orderForm button[type="submit"]').textContent = '💾 עדכן הזמנה';
   showTab('form');
+}
+
+let detailId = null;
+function openDetail(id){
+  const o = ordersCache.find(x=>x.id===id);
+  if(!o) return;
+  detailId = id;
+  const fieldRows = [
+    ['תאריך הזמנה', String(o['תאריך הזמנה']||'').split('T')[0]],
+    ['מק"ט', o['מקט']],
+    ['תיאור', o['תיאור']],
+    ["צ'", o["צ'"]],
+    ['מצב כלי', o["צ' עומד"]],
+    ['סוג כלי', o['סוג כלי']],
+    ['מודל', o['מודל']],
+    ['גרסא', o['גרסא']],
+    ['כמות שהוזמנה', o['כמות שהוזמנה']],
+    ['כמות שאושרה', o['כמות שאושרה']],
+    ['סיבה להזמנה', o['סיבה להזמנה']],
+    ['חלק מיוחד', o['חלק מיוחד']],
+    ['האם בתמורה', o['האם בתמורה']],
+    ['סטאטוס הזמנה', o['סטאטוס הזמנה']],
+    ['סיבת דחייה', o['סיבת דחייה']],
+    ['כמות שנמשכה', o['כמות שנמשכה']],
+    ['סטאטוס בלאי', o['סטאטוס בלאי']],
+    ['הוזמן ע"י', o['הוזמן עי']],
+    ['הערות', o['הערות']],
+  ].filter(([,val]) => val !== undefined && val !== '');
+
+  document.getElementById('detailContent').innerHTML = `
+    <h3 style="color:var(--accent);margin-bottom:10px;padding-left:24px">${o['תיאור']||''}</h3>
+    <table class="detail-table">
+      ${fieldRows.map(([label,val])=>`<tr><td>${label}</td><td>${val}</td></tr>`).join('')}
+    </table>
+    ${o['לוג סטאטוס'] ? `<div style="margin-top:12px"><div style="font-size:12px;color:var(--accent);margin-bottom:4px">היסטוריית סטאטוסים</div>${renderStatusLogTable(o['לוג סטאטוס'])}</div>` : ''}
+  `;
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+function closeDetail(){
+  document.getElementById('detailModal').classList.add('hidden');
+  detailId = null;
+}
+function editFromDetail(){
+  const id = detailId;
+  closeDetail();
+  editOrder(id);
 }
 
 async function deleteOrderConfirm(id){
@@ -571,7 +645,7 @@ function renderOrders(orders){
     const blaiBadge = o['האם בתמורה']==='כן' ? `<span class="badge" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)">בתמורה</span>` : '';
     return `
     <div class="order-card">
-      <div class="top">
+      <div class="top" onclick="openDetail('${o.id}')" style="cursor:pointer">
         <div>
           <div class="item">${o['תיאור']||''}</div>
           <div class="meta">מק"ט ${o['מקט']||''} · צ' ${o["צ'"]||''} · כמות ${o['כמות שהוזמנה']||''}</div>
@@ -619,10 +693,23 @@ function renderStatusLogTable(logText){
   </table>`;
 }
 async function updateStatus(id, newStatus){
+  const payload = {id, 'סטאטוס הזמנה': newStatus, 'עודכן עי': currentUser || ''};
+
+  if(newStatus === 'נמשך חלקית'){
+    const qty = prompt('כמה נמשך בפועל עד כה? (כמות מצטברת)');
+    if(qty === null){ renderOrders(ordersCache); return; } // cancelled — revert dropdown to old value
+    payload['כמות שנמשכה'] = qty;
+  }
+  if(newStatus === 'נדחה'){
+    const reason = prompt('סיבת דחייה (אין במלאי / נדרש אישור בוחן / אחר — פרט):');
+    if(reason === null){ renderOrders(ordersCache); return; }
+    payload['סיבת דחייה'] = reason;
+  }
+
   try{
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
-      body: new URLSearchParams({action:'update', data: JSON.stringify({id, 'סטאטוס הזמנה': newStatus, 'עודכן עי': currentUser || ''})})
+      body: new URLSearchParams({action:'update', data: JSON.stringify(payload)})
     });
     const json = await res.json();
     if(!json.success){
