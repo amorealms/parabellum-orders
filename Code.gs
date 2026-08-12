@@ -4,18 +4,18 @@
  *
  * SETUP:
  * 1. Create a new Google Sheet. Rename the first tab to exactly: Orders
- * 2. In row 1, paste these headers (in this exact order), one per column A→W:
+ * 2. In row 1, paste these headers (in this exact order), one per column A→X:
  *    id | תאריך הזמנה | מס' לוג | צ' | צ' עומד | מקט | תיאור | סוג כלי | מודל | גרסא |
  *    סיבה להזמנה | כמות שהוזמנה | כמות שאושרה | חלק מיוחד | האם בתמורה |
  *    סטאטוס הזמנה | סיבת דחייה | כמות שנמשכה | סטאטוס בלאי | הוזמן עי | הערות |
- *    עודכן | לוג סטאטוס
+ *    עודכן | לוג סטאטוס | לוג בלאי
  * 3. Extensions → Apps Script. Delete any starter code, paste this file's contents.
  * 4. Deploy → New deployment → Web app.
  *    Execute as: Me.  Who has access: Anyone.
  * 5. Copy the Web App URL and paste it into SCRIPT_URL in orders.html
  *
  * NOTE: if you already had this Sheet set up before, just add one new header
- * in column W: לוג סטאטוס — existing rows will just start with an empty log.
+ * in column X: לוג בלאי — existing rows will just start with an empty log.
  */
 
 const SHEET_NAME = 'Orders';
@@ -72,6 +72,22 @@ function formatLogDate_() {
   return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Jerusalem', 'dd/MM/yyyy');
 }
 
+// These fields can look like pure numbers (e.g. "000000005") — without this,
+// Sheets auto-converts them to actual numbers and silently drops leading zeros.
+const TEXT_FORCE_FIELDS = ['מקט', "צ'", "מס' לוג"];
+function forceTextValue_(value) {
+  if (value === undefined || value === null || value === '') return value;
+  const str = String(value);
+  return str.charAt(0) === "'" ? str : "'" + str;
+}
+function buildRow_(headers, data, existingRow) {
+  return headers.map((h, colIdx) => {
+    let v = data[h] !== undefined ? data[h] : (existingRow ? existingRow[colIdx] : '');
+    if (TEXT_FORCE_FIELDS.indexOf(h) !== -1) v = forceTextValue_(v);
+    return v;
+  });
+}
+
 function addOrder(data) {
   const sheet = getSheet_();
   const headers = getHeaders_(sheet);
@@ -81,7 +97,10 @@ function addOrder(data) {
   const who = data['עודכן עי'] || data['הוזמן עי'] || 'לא ידוע';
   const initialStatus = data['סטאטוס הזמנה'] || 'נשלח';
   data['לוג סטאטוס'] = `${formatLogDate_()}|${initialStatus}|${who}`;
-  const row = headers.map(h => (data[h] !== undefined ? data[h] : ''));
+  if (data['סטאטוס בלאי']) {
+    data['לוג בלאי'] = `${formatLogDate_()}|${data['סטאטוס בלאי']}|${who}`;
+  }
+  const row = buildRow_(headers, data, null);
   sheet.appendRow(row);
   return jsonResponse({ success: true, id: id });
 }
@@ -93,6 +112,8 @@ function updateOrder(data) {
   const idCol = headers.indexOf('id');
   const statusCol = headers.indexOf('סטאטוס הזמנה');
   const logCol = headers.indexOf('לוג סטאטוס');
+  const blaiStatusCol = headers.indexOf('סטאטוס בלאי');
+  const blaiLogCol = headers.indexOf('לוג בלאי');
   for (let i = 1; i < values.length; i++) {
     if (values[i][idCol] === data.id) {
       data['עודכן'] = new Date().toISOString();
@@ -106,9 +127,16 @@ function updateOrder(data) {
         data['לוג סטאטוס'] = existingLog ? existingLog + '\n' + entry : entry;
       }
 
-      const row = headers.map((h, colIdx) =>
-        data[h] !== undefined ? data[h] : values[i][colIdx]
-      );
+      const oldBlaiStatus = blaiStatusCol !== -1 ? values[i][blaiStatusCol] : undefined;
+      const newBlaiStatus = data['סטאטוס בלאי'];
+      if (newBlaiStatus !== undefined && newBlaiStatus !== oldBlaiStatus && blaiLogCol !== -1) {
+        const who = data['עודכן עי'] || 'לא ידוע';
+        const existingBlaiLog = values[i][blaiLogCol] || '';
+        const entry = `${formatLogDate_()}|${newBlaiStatus}|${who}`;
+        data['לוג בלאי'] = existingBlaiLog ? existingBlaiLog + '\n' + entry : entry;
+      }
+
+      const row = buildRow_(headers, data, values[i]);
       sheet.getRange(i + 1, 1, 1, headers.length).setValues([row]);
       return jsonResponse({ success: true });
     }
