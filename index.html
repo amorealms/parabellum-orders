@@ -342,14 +342,20 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
           <option value="">הכל</option><option value="כן">בתמורה</option><option value="לא">לא בתמורה</option>
         </select>
       </div>
-      <button type="button" class="secondary" style="margin-top:8px" onclick="clearFilters()">נקה סינון</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="clearFilters()">נקה סינון</button>
+        <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="refreshOrders()">🔄 רענן</button>
+      </div>
     </div>
     <div id="ordersList" class="items-list"><div class="empty">טוען...</div></div>
   </div>
 
   <!-- BLAI REPORT -->
   <div id="blaiScreen" class="screen">
-    <div class="section-label">פריטים בתמורה בתהליך בלאי (מאושר ואילך)</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div class="section-label" style="padding:0">פריטים בתמורה בתהליך בלאי (מאושר ואילך)</div>
+      <button type="button" class="secondary" style="margin:0 14px 0 0;padding:6px 12px;font-size:12px" onclick="refreshBlai()">🔄 רענן</button>
+    </div>
     <div id="blaiList" class="items-list"><div class="empty">טוען...</div></div>
   </div>
 
@@ -372,7 +378,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPaXiEgtWd81WJtn7KsSnmlnWEmbWw5oB8Ed_CVMLyC1cFTKut40TVEB0Na61zWKX0/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v12.08.26.1'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v12.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -410,6 +416,7 @@ function logout(){
 }
 
 /* ============ TABS ============ */
+let dataLoaded = false;
 async function showTab(tab){
   document.getElementById('formScreen').classList.toggle('active', tab==='form');
   document.getElementById('listScreen').classList.toggle('active', tab==='list');
@@ -417,8 +424,22 @@ async function showTab(tab){
   document.getElementById('tabFormBtn').classList.toggle('active', tab==='form');
   document.getElementById('tabListBtn').classList.toggle('active', tab==='list');
   document.getElementById('tabBlaiBtn').classList.toggle('active', tab==='blai');
-  if(tab==='list'){ await loadOrders(); renderOrders(ordersCache); }
-  if(tab==='blai'){ await loadOrders(); renderBlaiReport(); }
+  if(tab==='list'){
+    if(!dataLoaded) await loadOrders();
+    applyFilters();
+  }
+  if(tab==='blai'){
+    if(!dataLoaded) await loadOrders();
+    renderBlaiReport();
+  }
+}
+async function refreshOrders(){
+  await loadOrders();
+  applyFilters();
+}
+async function refreshBlai(){
+  await loadOrders();
+  renderBlaiReport();
 }
 
 /* ============ REASON CHIPS ============ */
@@ -616,14 +637,16 @@ async function loadOrders(){
     const res = await fetch(SCRIPT_URL + '?action=get');
     const json = await res.json();
     ordersCache = json.orders || [];
+    dataLoaded = true;
   }catch(err){
     ordersCache = null;
+    dataLoaded = false;
   }
 }
 const BLAI_REPORT_STATUSES = ['אושר','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
 function renderBlaiReport(){
   const list = document.getElementById('blaiList');
-  if(ordersCache === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור</div>'; return; }
+  if(ordersCache === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור<br><button type="button" class="secondary" style="margin-top:10px;max-width:220px" onclick="refreshBlai()">🔄 נסה שוב</button></div>'; return; }
   const items = ordersCache.filter(o => o['האם בתמורה']==='כן' && BLAI_REPORT_STATUSES.includes(o['סטאטוס הזמנה']));
   if(!items.length){ list.innerHTML = '<div class="empty">אין פריטים בתהליך בלאי כרגע</div>'; return; }
   list.innerHTML = items.map(o=>{
@@ -644,7 +667,7 @@ function renderBlaiReport(){
 }
 function renderOrders(orders){
   const list = document.getElementById('ordersList');
-  if(orders === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור</div>'; return; }
+  if(orders === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור<br><button type="button" class="secondary" style="margin-top:10px;max-width:220px" onclick="refreshOrders()">🔄 נסה שוב</button></div>'; return; }
   if(!orders.length){ list.innerHTML = '<div class="empty">אין הזמנות עדיין</div>'; return; }
   const statuses = ['נשלח','הוזמן','אושר','נדחה','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
   list.innerHTML = orders.slice().reverse().map(o=>{
