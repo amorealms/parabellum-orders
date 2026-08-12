@@ -24,6 +24,7 @@ function doGet(e) {
   try {
     const action = e.parameter.action;
     if (action === 'get') return getOrders();
+    if (action === 'debug_headers') return debugHeaders();
     return jsonResponse({ error: 'פעולה לא מוכרת' });
   } catch (err) {
     return jsonResponse({ error: err.message });
@@ -77,13 +78,34 @@ function formatLogDate_() {
 // Setting the cell's number format to plain text BEFORE writing is the reliable
 // fix — a leading apostrophe alone isn't consistently honored via the API.
 const TEXT_FORCE_FIELDS = ['מקט', "צ'", "מס' לוג"];
+
+function findColIndex_(headers, fieldName) {
+  for (let i = 0; i < headers.length; i++) {
+    if (String(headers[i]).trim() === fieldName) return i;
+  }
+  return -1;
+}
+
 function preFormatTextColumns_(sheet, rowIndex, headers) {
   TEXT_FORCE_FIELDS.forEach(fieldName => {
-    const colIdx = headers.indexOf(fieldName);
+    const colIdx = findColIndex_(headers, fieldName);
     if (colIdx !== -1) {
       sheet.getRange(rowIndex, colIdx + 1).setNumberFormat('@');
     }
   });
+  SpreadsheetApp.flush(); // force the format change to actually commit before we write values
+}
+
+// TEMPORARY — hit ?action=debug_headers in the browser to see exactly what
+// Apps Script sees in row 1, and whether it matches TEXT_FORCE_FIELDS.
+function debugHeaders() {
+  const sheet = getSheet_();
+  const headers = getHeaders_(sheet);
+  const check = TEXT_FORCE_FIELDS.map(f => ({
+    field: f,
+    foundAt: findColIndex_(headers, f),
+  }));
+  return jsonResponse({ headers: headers, textForceCheck: check });
 }
 
 function addOrder(data) {
