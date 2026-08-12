@@ -345,7 +345,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
       </div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="clearFilters()">נקה סינון</button>
-        <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="refreshOrders()">🔄 רענן</button>
+        <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="refreshOrders(this)">🔄 רענן</button>
       </div>
     </div>
     <div id="ordersList" class="items-list"><div class="empty">טוען...</div></div>
@@ -355,7 +355,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
   <div id="blaiScreen" class="screen">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <div class="section-label" style="padding:0">פריטים בתמורה בתהליך בלאי (מאושר ואילך)</div>
-      <button type="button" class="secondary" style="margin:0 14px 0 0;padding:6px 12px;font-size:12px" onclick="refreshBlai()">🔄 רענן</button>
+      <button type="button" class="secondary" style="margin:0 14px 0 0;padding:6px 12px;font-size:12px" onclick="refreshBlai(this)">🔄 רענן</button>
     </div>
     <div id="blaiList" class="items-list"><div class="empty">טוען...</div></div>
   </div>
@@ -387,7 +387,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPaXiEgtWd81WJtn7KsSnmlnWEmbWw5oB8Ed_CVMLyC1cFTKut40TVEB0Na61zWKX0/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v12.08.26.3'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v12.08.26.5'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -442,13 +442,19 @@ async function showTab(tab){
     renderBlaiReport();
   }
 }
-async function refreshOrders(){
+async function refreshOrders(btn){
+  const original = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ טוען...'; }
   await loadOrders();
   applyFilters();
+  if(btn){ btn.disabled = false; btn.textContent = original; }
 }
-async function refreshBlai(){
+async function refreshBlai(btn){
+  const original = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ טוען...'; }
   await loadOrders();
   renderBlaiReport();
+  if(btn){ btn.disabled = false; btn.textContent = original; }
 }
 
 /* ============ REASON CHIPS ============ */
@@ -591,20 +597,37 @@ function editFromDetail(){
   editOrder(id);
 }
 
-async function deleteOrderConfirm(id){
+async function deleteOrderConfirm(id, btn){
   if(!confirm('למחוק את ההזמנה הזו? הפעולה לא ניתנת לביטול.')) return;
+  const original = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ מוחק...'; }
   try{
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
       body: new URLSearchParams({action:'delete', data: JSON.stringify({id})})
     });
-    const json = await res.json();
-    if(!json.success){ showToast('שגיאה במחיקה: ' + (json.error||'')); return; }
+    const text = await res.text();
+    let json;
+    try{
+      json = JSON.parse(text);
+    }catch(parseErr){
+      console.error('Delete: response was not valid JSON:', text.slice(0, 300));
+      showToast('שגיאת שרת (לא JSON) — פרטים בקונסולה');
+      if(btn){ btn.disabled = false; btn.textContent = original; }
+      return;
+    }
+    if(!json.success){
+      showToast('שגיאה במחיקה: ' + (json.error||''));
+      if(btn){ btn.disabled = false; btn.textContent = original; }
+      return;
+    }
     showToast('ההזמנה נמחקה');
     ordersCache = ordersCache.filter(o=>o.id!==id);
-    renderOrders(ordersCache);
+    renderOrders(ordersCache); // re-render removes the card, so no need to restore the button
   }catch(err){
-    showToast('שגיאה במחיקה — בדוק חיבור');
+    console.error('Delete network error:', err);
+    showToast('שגיאה בחיבור: ' + err.message);
+    if(btn){ btn.disabled = false; btn.textContent = original; }
   }
 }
 
@@ -776,7 +799,7 @@ async function loadOrders(){
 const BLAI_REPORT_STATUSES = ['אושר','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
 function renderBlaiReport(){
   const list = document.getElementById('blaiList');
-  if(ordersCache === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור<br><button type="button" class="secondary" style="margin-top:10px;max-width:220px" onclick="refreshBlai()">🔄 נסה שוב</button></div>'; return; }
+  if(ordersCache === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור<br><button type="button" class="secondary" style="margin-top:10px;max-width:220px" onclick="refreshBlai(this)">🔄 נסה שוב</button></div>'; return; }
   const items = ordersCache.filter(o => o['האם בתמורה']==='כן' && BLAI_REPORT_STATUSES.includes(o['סטאטוס הזמנה']));
   if(!items.length){ list.innerHTML = '<div class="empty">אין פריטים בתהליך בלאי כרגע</div>'; return; }
   list.innerHTML = items.map(o=>{
@@ -797,7 +820,7 @@ function renderBlaiReport(){
 }
 function renderOrders(orders){
   const list = document.getElementById('ordersList');
-  if(orders === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור<br><button type="button" class="secondary" style="margin-top:10px;max-width:220px" onclick="refreshOrders()">🔄 נסה שוב</button></div>'; return; }
+  if(orders === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור<br><button type="button" class="secondary" style="margin-top:10px;max-width:220px" onclick="refreshOrders(this)">🔄 נסה שוב</button></div>'; return; }
   if(!orders.length){ list.innerHTML = '<div class="empty">אין הזמנות עדיין</div>'; return; }
   const statuses = ['נשלח','הוזמן','אושר','נדחה','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
   list.innerHTML = orders.slice().reverse().map(o=>{
@@ -820,7 +843,7 @@ function renderOrders(orders){
       </select>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button type="button" class="secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px" onclick="editOrder('${o.id}')">✏️ ערוך</button>
-        <button type="button" class="secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px;border-color:var(--red);color:var(--red)" onclick="deleteOrderConfirm('${o.id}')">🗑️ מחק</button>
+        <button type="button" class="secondary" style="margin-top:0;flex:1;padding:8px;font-size:12px;border-color:var(--red);color:var(--red)" onclick="deleteOrderConfirm('${o.id}', this)">🗑️ מחק</button>
       </div>
       ${o['לוג סטאטוס'] ? `
       <details style="margin-top:8px">
