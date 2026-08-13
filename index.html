@@ -328,28 +328,31 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
   <div id="listScreen" class="screen">
     <div class="search-wrap">
       <input type="text" id="search" class="search-input" placeholder="חיפוש לפי צ', מק&quot;ט, תיאור...">
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <input type="date" id="filterDate" class="search-input" style="flex:1;min-width:130px;font-size:13px;padding:9px">
-        <input type="text" id="filterTz" placeholder="סינון לפי צ'" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
-        <input type="text" id="filterModel" placeholder="סינון לפי מודל" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <select id="filterStatus" class="search-input" style="flex:1;min-width:110px;font-size:13px;padding:9px">
-          <option value="">כל הסטאטוסים</option>
-          <option>נשלח</option><option>הוזמן</option><option>אושר</option><option>נדחה</option>
-          <option>נופק</option><option>ממתין למשיכה</option><option>נמשך</option><option>נמשך חלקית</option><option>קוטלג</option>
-        </select>
-        <select id="filterSpecial" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
-          <option value="">כל החלקים</option>
-          <option value="רגיל">רגיל</option><option value="מזקום">מזקו"ם</option><option value="בקש">בק"ש</option><option value="צמיג">צמיג</option>
-        </select>
-        <select id="filterTemura" class="search-input" style="flex:1;min-width:90px;font-size:13px;padding:9px">
-          <option value="">הכל</option><option value="כן">בתמורה</option><option value="לא">לא בתמורה</option>
-        </select>
-      </div>
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="clearFilters()">נקה סינון</button>
+        <button type="button" class="secondary" style="margin-top:0;flex:1" id="filtersToggleBtn" onclick="toggleFiltersDrawer()">☰ סינונים</button>
         <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="refreshOrders(this)">🔄 רענן</button>
+      </div>
+      <div id="filtersDrawer" class="hidden" style="margin-top:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input type="date" id="filterDate" class="search-input" style="flex:1;min-width:130px;font-size:13px;padding:9px">
+          <input type="text" id="filterTz" placeholder="סינון לפי צ'" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+          <input type="text" id="filterModel" placeholder="סינון לפי מודל" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <select id="filterStatus" class="search-input" style="flex:1;min-width:110px;font-size:13px;padding:9px">
+            <option value="">כל הסטאטוסים</option>
+            <option>נשלח</option><option>הוזמן</option><option>אושר</option><option>נדחה</option>
+            <option>נופק</option><option>ממתין למשיכה</option><option>נמשך</option><option>נמשך חלקית</option><option>קוטלג</option>
+          </select>
+          <select id="filterSpecial" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+            <option value="">כל החלקים</option>
+            <option value="רגיל">רגיל</option><option value="מזקום">מזקו"ם</option><option value="בקש">בק"ש</option><option value="צמיג">צמיג</option>
+          </select>
+          <select id="filterTemura" class="search-input" style="flex:1;min-width:90px;font-size:13px;padding:9px">
+            <option value="">הכל</option><option value="כן">בתמורה</option><option value="לא">לא בתמורה</option>
+          </select>
+        </div>
+        <button type="button" class="secondary" style="margin-top:8px" onclick="clearFilters()">נקה סינון</button>
       </div>
     </div>
     <div id="ordersList" class="items-list"><div class="empty">טוען...</div></div>
@@ -388,7 +391,11 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 <div class="modal-overlay hidden" id="errorLogModal" onclick="if(event.target===this) closeErrorLog()">
   <div class="modal-card">
     <button class="modal-close" onclick="closeErrorLog()">✕</button>
-    <h3 style="color:var(--accent);margin-bottom:10px;padding-left:24px">🐞 יומן שגיאות</h3>
+    <h3 style="color:var(--accent);margin-bottom:10px;padding-left:24px">🐞 יומן</h3>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button type="button" id="logTabErrors" class="tab-btn active" style="flex:1" onclick="switchLogTab('errors')">שגיאות</button>
+      <button type="button" id="logTabActivity" class="tab-btn" style="flex:1" onclick="switchLogTab('activity')">פעולות</button>
+    </div>
     <div id="errorLogContent"></div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="copyErrorLog()">📋 העתק הכל</button>
@@ -406,7 +413,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v13.08.26.1'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v13.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -432,6 +439,7 @@ function doLogin(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('mainApp').style.display = 'block';
   document.getElementById('userBadge').textContent = currentUser;
+  logActivity('כניסה לאפליקציה');
   showTab('form');
 }
 function logout(){
@@ -620,37 +628,36 @@ async function deleteOrderConfirm(id, btn){
   if(!confirm('למחוק את ההזמנה הזו? הפעולה לא ניתנת לביטול.')) return;
   const original = btn ? btn.textContent : null;
   if(btn){ btn.disabled = true; btn.textContent = '⏳ מוחק...'; }
-  try{
-    const res = await fetch(SCRIPT_URL, {
-      method:'POST',
-      body: new URLSearchParams({action:'delete', data: JSON.stringify({id})})
-    });
-    const text = await res.text();
-    let json;
-    try{
-      json = JSON.parse(text);
-    }catch(parseErr){
-      console.error('Delete: response was not valid JSON:', text.slice(0, 300));
-      logError('מחיקת הזמנה', 'תגובת שרת לא תקינה (לא JSON)', text.slice(0, 300));
-      showToast('שגיאת שרת (לא JSON): ' + text.slice(0, 200), true);
-      if(btn){ btn.disabled = false; btn.textContent = original; }
-      return;
+  logActivity('מחיקת הזמנה', `ניסיון מחיקה (id: ${id})`);
+
+  const result = await fetchJsonWithRetry_(SCRIPT_URL, {
+    method:'POST',
+    body: new URLSearchParams({action:'delete', data: JSON.stringify({id})})
+  }, 1);
+
+  if(!result.ok){
+    if(result.kind === 'not_json'){
+      logError('מחיקת הזמנה', 'תגובת שרת לא תקינה (לא JSON) — לאחר ניסיון חוזר', result.raw.slice(0, 300));
+      showToast('שגיאת שרת (לא JSON): ' + result.raw.slice(0, 200), true);
+    }else{
+      logError('מחיקת הזמנה', 'שגיאת רשת — לאחר ניסיון חוזר', result.err.message + '\n' + (result.err.stack || ''));
+      showToast('שגיאה בחיבור: ' + result.err.message, true);
     }
-    if(!json.success){
-      logError('מחיקת הזמנה', 'שרת החזיר שגיאה', json.error || '');
-      showToast('שגיאה במחיקה: ' + (json.error||''), true);
-      if(btn){ btn.disabled = false; btn.textContent = original; }
-      return;
-    }
-    showToast('ההזמנה נמחקה');
-    ordersCache = ordersCache.filter(o=>o.id!==id);
-    renderOrders(ordersCache); // re-render removes the card, so no need to restore the button
-  }catch(err){
-    console.error('Delete network error:', err);
-    logError('מחיקת הזמנה', 'שגיאת רשת', err.message + '\n' + (err.stack || ''));
-    showToast('שגיאה בחיבור: ' + err.message, true);
     if(btn){ btn.disabled = false; btn.textContent = original; }
+    return;
   }
+
+  const json = result.json;
+  if(!json.success){
+    logError('מחיקת הזמנה', 'שרת החזיר שגיאה', json.error || '');
+    showToast('שגיאה במחיקה: ' + (json.error||''), true);
+    if(btn){ btn.disabled = false; btn.textContent = original; }
+    return;
+  }
+  logActivity('מחיקת הזמנה', `הצליחה (id: ${id})`);
+  showToast('ההזמנה נמחקה');
+  ordersCache = ordersCache.filter(o=>o.id!==id);
+  renderOrders(ordersCache); // re-render removes the card, so no need to restore the button
 }
 
 document.getElementById('orderForm').addEventListener('submit', async e=>{
@@ -671,26 +678,30 @@ async function attemptSave(data, action){
   const originalText = submitBtn.textContent;
   submitBtn.disabled = true;
   submitBtn.textContent = '⏳ שומר...';
-  try{
-    const res = await fetch(SCRIPT_URL, {
-      method:'POST',
-      body: new URLSearchParams({action, data: JSON.stringify(data)})
-    });
-    const json = await res.json();
+  logActivity(action==='add' ? 'יצירת הזמנה' : 'עדכון הזמנה', `ניסיון (מק"ט: ${data['מקט']||''})`);
+
+  const result = await fetchJsonWithRetry_(SCRIPT_URL, {
+    method:'POST',
+    body: new URLSearchParams({action, data: JSON.stringify(data)})
+  }, 1);
+
+  if(!result.ok){
+    const msg = result.kind === 'not_json' ? 'תגובת שרת לא תקינה: ' + result.raw.slice(0,200) : 'בעיית חיבור לאינטרנט';
+    logError('שמירת הזמנה', result.kind === 'not_json' ? 'תגובה לא תקינה — לאחר ניסיון חוזר' : 'שגיאת רשת — לאחר ניסיון חוזר', result.kind === 'not_json' ? result.raw.slice(0,300) : result.err.message);
+    showSaveResult(false, data, action, msg);
+  }else{
+    const json = result.json;
     if(!json.success){
       logError('שמירת הזמנה', 'שרת החזיר שגיאה', json.error || '');
       showSaveResult(false, data, action, json.error || 'לא נשמר בשרת');
     }else{
       if(action === 'add') data.id = json.id;
+      logActivity(action==='add' ? 'יצירת הזמנה' : 'עדכון הזמנה', `הצליחה (מק"ט: ${data['מקט']||''})`);
       showSaveResult(true, data, action);
     }
-  }catch(err){
-    logError('שמירת הזמנה', 'שגיאת רשת', err.message + '\n' + (err.stack || ''));
-    showSaveResult(false, data, action, 'בעיית חיבור לאינטרנט');
-  }finally{
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
   }
+  submitBtn.disabled = false;
+  submitBtn.textContent = originalText;
 }
 
 /* ============ SAVE RESULT SCREEN ============ */
@@ -922,27 +933,42 @@ async function updateStatus(id, newStatus){
     payload['סיבת דחייה'] = reason;
   }
 
-  try{
-    const res = await fetch(SCRIPT_URL, {
-      method:'POST',
-      body: new URLSearchParams({action:'update', data: JSON.stringify(payload)})
-    });
-    const json = await res.json();
-    if(!json.success){
-      logError('עדכון סטאטוס', 'שרת החזיר שגיאה', json.error || '');
-      showToast('שגיאה: ' + (json.error || 'לא עודכן'), true);
-      return;
-    }
-    showToast('סטאטוס עודכן');
-    await loadOrders(); // refresh so the status log reflects the real backend entry
-    renderOrders(ordersCache);
-  }catch(err){
-    logError('עדכון סטאטוס', 'שגיאת רשת', err.message + '\n' + (err.stack || ''));
+  logActivity('עדכון סטאטוס מהיר', `id: ${id} → ${newStatus}`);
+  const result = await fetchJsonWithRetry_(SCRIPT_URL, {
+    method:'POST',
+    body: new URLSearchParams({action:'update', data: JSON.stringify(payload)})
+  }, 1);
+
+  if(!result.ok){
+    const detail = result.kind === 'not_json' ? result.raw.slice(0,300) : (result.err.message + '\n' + (result.err.stack || ''));
+    logError('עדכון סטאטוס', result.kind === 'not_json' ? 'תגובה לא תקינה — לאחר ניסיון חוזר' : 'שגיאת רשת — לאחר ניסיון חוזר', detail);
     showToast('שגיאה בעדכון — בדוק חיבור', true);
+    return;
   }
+  const json = result.json;
+  if(!json.success){
+    logError('עדכון סטאטוס', 'שרת החזיר שגיאה', json.error || '');
+    showToast('שגיאה: ' + (json.error || 'לא עודכן'), true);
+    return;
+  }
+  logActivity('עדכון סטאטוס מהיר', `הצליח (id: ${id} → ${newStatus})`);
+  showToast('סטאטוס עודכן');
+  await loadOrders(); // refresh so the status log reflects the real backend entry
+  renderOrders(ordersCache);
+}
+function updateFiltersButtonLabel_(){
+  const fDate = document.getElementById('filterDate').value;
+  const fTz = document.getElementById('filterTz').value.trim();
+  const fModel = document.getElementById('filterModel').value.trim();
+  const fStatus = document.getElementById('filterStatus').value;
+  const fSpecial = document.getElementById('filterSpecial').value;
+  const fTemura = document.getElementById('filterTemura').value;
+  const count = [fDate,fTz,fModel,fStatus,fSpecial,fTemura].filter(Boolean).length;
+  document.getElementById('filtersToggleBtn').textContent = count ? `☰ סינונים (${count})` : '☰ סינונים';
 }
 function applyFilters(){
   if(ordersCache === null){ return; }
+  updateFiltersButtonLabel_();
   const q = document.getElementById('search').value.trim();
   const fDate = document.getElementById('filterDate').value;
   const fTz = document.getElementById('filterTz').value.trim();
@@ -969,6 +995,10 @@ function applyFilters(){
   });
   renderOrders(filtered);
 }
+function toggleFiltersDrawer(){
+  const drawer = document.getElementById('filtersDrawer');
+  drawer.classList.toggle('hidden');
+}
 function clearFilters(){
   document.getElementById('search').value = '';
   document.getElementById('filterDate').value = '';
@@ -985,6 +1015,48 @@ function clearFilters(){
 ['filterDate','filterStatus','filterSpecial','filterTemura'].forEach(id=>{
   document.getElementById(id).addEventListener('change', applyFilters);
 });
+
+/* ============ ACTIVITY LOG (separate store — what the user did, not just errors) ============ */
+const ACTIVITY_LOG_KEY = 'parabellum_activity_log';
+const MAX_ACTIVITY_ENTRIES = 100;
+
+function getActivityLog(){
+  try{ return JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY) || '[]'); }catch(e){ return []; }
+}
+function logActivity(action, details){
+  let log = getActivityLog();
+  log.unshift({
+    time: new Date().toLocaleString('he-IL'),
+    action: action,
+    details: details ? String(details) : '',
+    user: currentUser || '—'
+  });
+  if(log.length > MAX_ACTIVITY_ENTRIES) log = log.slice(0, MAX_ACTIVITY_ENTRIES);
+  localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(log));
+}
+function clearActivityLog(){
+  localStorage.removeItem(ACTIVITY_LOG_KEY);
+}
+
+/* ============ RETRY HELPER — one automatic retry on network/non-JSON failure ============ */
+async function fetchJsonWithRetry_(url, options, retries){
+  retries = retries === undefined ? 1 : retries;
+  for(let attempt = 0; attempt <= retries; attempt++){
+    try{
+      const res = await fetch(url, options);
+      const text = await res.text();
+      try{
+        return { ok:true, json: JSON.parse(text) };
+      }catch(parseErr){
+        if(attempt < retries){ await new Promise(r=>setTimeout(r, 800)); continue; }
+        return { ok:false, kind:'not_json', raw:text };
+      }
+    }catch(networkErr){
+      if(attempt < retries){ await new Promise(r=>setTimeout(r, 800)); continue; }
+      return { ok:false, kind:'network', err:networkErr };
+    }
+  }
+}
 
 /* ============ TOAST ============ */
 /* ============ ERROR LOG (persistent, viewable, copyable) ============ */
@@ -1020,12 +1092,23 @@ function updateErrorLogBadge(){
   btn.style.color = count ? 'var(--red)' : 'var(--muted)';
   btn.style.borderColor = count ? 'var(--red-border)' : 'var(--border)';
 }
+let logModalTab = 'errors';
 function openErrorLog(){
-  renderErrorLog();
+  logModalTab = 'errors';
+  renderLogModal();
   document.getElementById('errorLogModal').classList.remove('hidden');
 }
 function closeErrorLog(){
   document.getElementById('errorLogModal').classList.add('hidden');
+}
+function switchLogTab(tab){
+  logModalTab = tab;
+  renderLogModal();
+}
+function renderLogModal(){
+  document.getElementById('logTabErrors').classList.toggle('active', logModalTab==='errors');
+  document.getElementById('logTabActivity').classList.toggle('active', logModalTab==='activity');
+  if(logModalTab === 'errors') renderErrorLog(); else renderActivityLog();
 }
 function renderErrorLog(){
   const log = getErrorLog();
@@ -1041,17 +1124,35 @@ function renderErrorLog(){
       ${e.details ? `<div style="color:var(--muted);margin-top:3px;white-space:pre-wrap;word-break:break-word;font-family:monospace;font-size:11px">${escapeHtml_(e.details)}</div>` : ''}
     </div>`).join('');
 }
+function renderActivityLog(){
+  const log = getActivityLog();
+  const container = document.getElementById('errorLogContent');
+  if(!log.length){
+    container.innerHTML = '<div class="empty">אין פעולות רשומות</div>';
+    return;
+  }
+  container.innerHTML = log.map(e => `
+    <div style="border-bottom:1px solid var(--border);padding:8px 0;font-size:12px">
+      <div style="color:var(--muted)">${escapeHtml_(e.time)} · ${escapeHtml_(e.user)}</div>
+      <div style="color:var(--text);margin-top:2px;font-weight:600">${escapeHtml_(e.action)}</div>
+      ${e.details ? `<div style="color:var(--muted);margin-top:2px">${escapeHtml_(e.details)}</div>` : ''}
+    </div>`).join('');
+}
 function copyErrorLog(){
-  const log = getErrorLog();
-  if(!log.length){ showToast('אין שגיאות להעתיק'); return; }
-  const text = log.map(e => `[${e.time}] ${e.context} (${e.user}): ${e.message}${e.details ? '\n  ' + e.details : ''}`).join('\n\n');
+  const isErrors = logModalTab === 'errors';
+  const log = isErrors ? getErrorLog() : getActivityLog();
+  if(!log.length){ showToast('אין נתונים להעתיק'); return; }
+  const text = isErrors
+    ? log.map(e => `[${e.time}] ${e.context} (${e.user}): ${e.message}${e.details ? '\n  ' + e.details : ''}`).join('\n\n')
+    : log.map(e => `[${e.time}] ${e.user}: ${e.action}${e.details ? ' — ' + e.details : ''}`).join('\n');
   navigator.clipboard.writeText(text).then(()=> showToast('היומן הועתק ללוח'));
 }
 function clearErrorLog(){
-  if(!confirm('לנקות את כל יומן השגיאות?')) return;
-  localStorage.removeItem(ERROR_LOG_KEY);
-  updateErrorLogBadge();
-  renderErrorLog();
+  const isErrors = logModalTab === 'errors';
+  if(!confirm(isErrors ? 'לנקות את כל יומן השגיאות?' : 'לנקות את כל יומן הפעולות?')) return;
+  if(isErrors){ localStorage.removeItem(ERROR_LOG_KEY); updateErrorLogBadge(); }
+  else{ clearActivityLog(); }
+  renderLogModal();
   showToast('היומן נוקה');
 }
 updateErrorLogBadge();
