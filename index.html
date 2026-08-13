@@ -107,8 +107,11 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 .status-select{margin-top:8px;width:100%;padding:9px;border-radius:8px;border:1.5px solid #333;background:#262626;color:var(--text);font-size:13px}
 .empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:14px}
 
-.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111;padding:10px 18px;border-radius:999px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:400}
-.toast.show{opacity:1}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111;padding:10px 14px 10px 18px;border-radius:16px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:400;max-width:90vw;display:flex;align-items:center;gap:10px}
+.toast.show{opacity:1;pointer-events:auto}
+.toast.error{background:var(--red-bg);color:var(--red);border:1.5px solid var(--red-border)}
+.toast-msg{white-space:pre-wrap;word-break:break-word;line-height:1.4}
+.toast-close{background:none;border:none;color:inherit;font-size:16px;cursor:pointer;flex-shrink:0;opacity:.8;line-height:1}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:500;padding:16px}
 .modal-overlay.hidden{display:none}
@@ -148,6 +151,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
   <div class="topbar">
     <div class="topbar-title">מעקב הזמנות <span id="versionBadgeTop" style="font-size:10px;color:var(--muted);font-weight:400"></span></div>
     <button type="button" id="pendingSyncBtn" class="hidden" onclick="syncPendingOrders()" style="background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer">🔄 סנכרן</button>
+    <button type="button" id="errorLogBtn" onclick="openErrorLog()" style="background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer">🐞 יומן</button>
     <div class="user-badge" id="userBadge" onclick="logout()">—</div>
   </div>
 
@@ -381,13 +385,28 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="modal-overlay hidden" id="errorLogModal" onclick="if(event.target===this) closeErrorLog()">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeErrorLog()">✕</button>
+    <h3 style="color:var(--accent);margin-bottom:10px;padding-left:24px">🐞 יומן שגיאות</h3>
+    <div id="errorLogContent"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="copyErrorLog()">📋 העתק הכל</button>
+      <button type="button" class="secondary" style="margin-top:0;flex:1;border-color:var(--red);color:var(--red)" onclick="clearErrorLog()">🗑️ נקה יומן</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span class="toast-msg" id="toastMsg"></span>
+  <button type="button" class="toast-close" onclick="hideToast()">✕</button>
+</div>
 
 <script>
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPaXiEgtWd81WJtn7KsSnmlnWEmbWw5oB8Ed_CVMLyC1cFTKut40TVEB0Na61zWKX0/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v12.08.26.5'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v12.08.26.7'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -612,12 +631,14 @@ async function deleteOrderConfirm(id, btn){
       json = JSON.parse(text);
     }catch(parseErr){
       console.error('Delete: response was not valid JSON:', text.slice(0, 300));
-      showToast('שגיאת שרת (לא JSON) — פרטים בקונסולה');
+      logError('מחיקת הזמנה', 'תגובת שרת לא תקינה (לא JSON)', text.slice(0, 300));
+      showToast('שגיאת שרת (לא JSON): ' + text.slice(0, 200), true);
       if(btn){ btn.disabled = false; btn.textContent = original; }
       return;
     }
     if(!json.success){
-      showToast('שגיאה במחיקה: ' + (json.error||''));
+      logError('מחיקת הזמנה', 'שרת החזיר שגיאה', json.error || '');
+      showToast('שגיאה במחיקה: ' + (json.error||''), true);
       if(btn){ btn.disabled = false; btn.textContent = original; }
       return;
     }
@@ -626,7 +647,8 @@ async function deleteOrderConfirm(id, btn){
     renderOrders(ordersCache); // re-render removes the card, so no need to restore the button
   }catch(err){
     console.error('Delete network error:', err);
-    showToast('שגיאה בחיבור: ' + err.message);
+    logError('מחיקת הזמנה', 'שגיאת רשת', err.message + '\n' + (err.stack || ''));
+    showToast('שגיאה בחיבור: ' + err.message, true);
     if(btn){ btn.disabled = false; btn.textContent = original; }
   }
 }
@@ -656,12 +678,14 @@ async function attemptSave(data, action){
     });
     const json = await res.json();
     if(!json.success){
+      logError('שמירת הזמנה', 'שרת החזיר שגיאה', json.error || '');
       showSaveResult(false, data, action, json.error || 'לא נשמר בשרת');
     }else{
       if(action === 'add') data.id = json.id;
       showSaveResult(true, data, action);
     }
   }catch(err){
+    logError('שמירת הזמנה', 'שגיאת רשת', err.message + '\n' + (err.stack || ''));
     showSaveResult(false, data, action, 'בעיית חיבור לאינטרנט');
   }finally{
     submitBtn.disabled = false;
@@ -775,8 +799,16 @@ async function syncPendingOrders(){
         body: new URLSearchParams({action:item.action, data: JSON.stringify(item.data)})
       });
       const json = await res.json();
-      if(json.success) successCount++; else remaining.push(item);
-    }catch(err){ remaining.push(item); }
+      if(json.success){
+        successCount++;
+      }else{
+        logError('סנכרון הזמנה ממתינה', 'שרת החזיר שגיאה', json.error || '');
+        remaining.push(item);
+      }
+    }catch(err){
+      logError('סנכרון הזמנה ממתינה', 'שגיאת רשת', err.message);
+      remaining.push(item);
+    }
   }
   setPendingOrders(remaining);
   if(remaining.length === 0){ dataLoaded = false; }
@@ -792,6 +824,7 @@ async function loadOrders(){
     ordersCache = json.orders || [];
     dataLoaded = true;
   }catch(err){
+    logError('טעינת הזמנות', 'שגיאת רשת', err.message + '\n' + (err.stack || ''));
     ordersCache = null;
     dataLoaded = false;
   }
@@ -896,14 +929,16 @@ async function updateStatus(id, newStatus){
     });
     const json = await res.json();
     if(!json.success){
-      showToast('שגיאה: ' + (json.error || 'לא עודכן'));
+      logError('עדכון סטאטוס', 'שרת החזיר שגיאה', json.error || '');
+      showToast('שגיאה: ' + (json.error || 'לא עודכן'), true);
       return;
     }
     showToast('סטאטוס עודכן');
     await loadOrders(); // refresh so the status log reflects the real backend entry
     renderOrders(ordersCache);
   }catch(err){
-    showToast('שגיאה בעדכון — בדוק חיבור');
+    logError('עדכון סטאטוס', 'שגיאת רשת', err.message + '\n' + (err.stack || ''));
+    showToast('שגיאה בעדכון — בדוק חיבור', true);
   }
 }
 function applyFilters(){
@@ -952,11 +987,90 @@ function clearFilters(){
 });
 
 /* ============ TOAST ============ */
-function showToast(msg){
+/* ============ ERROR LOG (persistent, viewable, copyable) ============ */
+const ERROR_LOG_KEY = 'parabellum_error_log';
+const MAX_LOG_ENTRIES = 60;
+
+function escapeHtml_(str){
+  const div = document.createElement('div');
+  div.textContent = String(str ?? '');
+  return div.innerHTML;
+}
+function getErrorLog(){
+  try{ return JSON.parse(localStorage.getItem(ERROR_LOG_KEY) || '[]'); }catch(e){ return []; }
+}
+function logError(context, message, details){
+  let log = getErrorLog();
+  log.unshift({
+    time: new Date().toLocaleString('he-IL'),
+    context: context,
+    message: String(message ?? ''),
+    details: details ? String(details) : '',
+    user: currentUser || '—'
+  });
+  if(log.length > MAX_LOG_ENTRIES) log = log.slice(0, MAX_LOG_ENTRIES);
+  localStorage.setItem(ERROR_LOG_KEY, JSON.stringify(log));
+  updateErrorLogBadge();
+}
+function updateErrorLogBadge(){
+  const btn = document.getElementById('errorLogBtn');
+  if(!btn) return;
+  const count = getErrorLog().length;
+  btn.textContent = count ? `🐞 יומן (${count})` : '🐞 יומן';
+  btn.style.color = count ? 'var(--red)' : 'var(--muted)';
+  btn.style.borderColor = count ? 'var(--red-border)' : 'var(--border)';
+}
+function openErrorLog(){
+  renderErrorLog();
+  document.getElementById('errorLogModal').classList.remove('hidden');
+}
+function closeErrorLog(){
+  document.getElementById('errorLogModal').classList.add('hidden');
+}
+function renderErrorLog(){
+  const log = getErrorLog();
+  const container = document.getElementById('errorLogContent');
+  if(!log.length){
+    container.innerHTML = '<div class="empty">אין שגיאות רשומות ✓</div>';
+    return;
+  }
+  container.innerHTML = log.map(e => `
+    <div style="border-bottom:1px solid var(--border);padding:9px 0;font-size:12px">
+      <div style="color:var(--muted)">${escapeHtml_(e.time)} · ${escapeHtml_(e.context)} · ${escapeHtml_(e.user)}</div>
+      <div style="color:var(--red);margin-top:3px;font-weight:600">${escapeHtml_(e.message)}</div>
+      ${e.details ? `<div style="color:var(--muted);margin-top:3px;white-space:pre-wrap;word-break:break-word;font-family:monospace;font-size:11px">${escapeHtml_(e.details)}</div>` : ''}
+    </div>`).join('');
+}
+function copyErrorLog(){
+  const log = getErrorLog();
+  if(!log.length){ showToast('אין שגיאות להעתיק'); return; }
+  const text = log.map(e => `[${e.time}] ${e.context} (${e.user}): ${e.message}${e.details ? '\n  ' + e.details : ''}`).join('\n\n');
+  navigator.clipboard.writeText(text).then(()=> showToast('היומן הועתק ללוח'));
+}
+function clearErrorLog(){
+  if(!confirm('לנקות את כל יומן השגיאות?')) return;
+  localStorage.removeItem(ERROR_LOG_KEY);
+  updateErrorLogBadge();
+  renderErrorLog();
+  showToast('היומן נוקה');
+}
+updateErrorLogBadge();
+
+let toastTimer = null;
+function showToast(msg, isError){
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.toggle('error', !!isError);
   t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2200);
+  if(toastTimer) clearTimeout(toastTimer);
+  if(!isError){
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+  // error toasts stay until the user taps the ✕
+}
+function hideToast(){
+  document.getElementById('toast').classList.remove('show');
+  if(toastTimer) clearTimeout(toastTimer);
 }
 
 document.querySelector('input[name="תאריך הזמנה"]').valueAsDate = new Date();
