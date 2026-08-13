@@ -107,6 +107,20 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 .status-select{margin-top:8px;width:100%;padding:9px;border-radius:8px;border:1.5px solid #333;background:#262626;color:var(--text);font-size:13px}
 .empty{color:var(--muted);text-align:center;padding:30px 10px;font-size:14px}
 
+/* DASHBOARD */
+.dash-wrap{padding:14px}
+.dash-section{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:14px}
+.dash-section-title{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px}
+.status-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.status-box{background:#1a1a1a;border:1.5px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;transition:border-color .12s}
+.status-box:active{border-color:var(--accent)}
+.status-num{font-size:22px;font-weight:800;margin-top:6px}
+.status-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.metric-card{text-align:center;padding:10px 0}
+.metric-number{font-size:36px;font-weight:800;color:var(--accent)}
+.metric-label{font-size:12px;color:var(--muted);margin-top:4px}
+.chart-wrap{position:relative;height:230px}
+
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111;padding:10px 14px 10px 18px;border-radius:16px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:400;max-width:90vw;display:flex;align-items:center;gap:10px}
 .toast.show{opacity:1;pointer-events:auto}
 .toast.error{background:var(--red-bg);color:var(--red);border:1.5px solid var(--red-border)}
@@ -122,6 +136,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 .detail-table td:first-child{color:var(--muted);white-space:nowrap;width:40%}
 .detail-table tr:nth-child(even){background:rgba(255,255,255,.03)}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -155,14 +170,56 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
     <div class="user-badge" id="userBadge" onclick="logout()">—</div>
   </div>
 
-  <div class="tabs">
-    <button id="tabFormBtn" class="tab-btn active" onclick="showTab('form')">הזמנה חדשה</button>
+  <div class="tabs" style="flex-wrap:wrap">
+    <button id="tabDashboardBtn" class="tab-btn active" onclick="showTab('dashboard')">🏠 דאשבורד</button>
+    <button id="tabFormBtn" class="tab-btn" onclick="showTab('form')">הזמנה חדשה</button>
     <button id="tabListBtn" class="tab-btn" onclick="showTab('list')">רשימת הזמנות</button>
     <button id="tabBlaiBtn" class="tab-btn" onclick="showTab('blai')">דוח בלאי</button>
   </div>
 
+  <!-- DASHBOARD -->
+  <div id="dashboardScreen" class="screen active">
+    <div class="dash-wrap">
+
+      <div class="dash-section">
+        <div class="dash-section-title">התפלגות לפי סטאטוס</div>
+        <div id="statusRow" class="status-row"></div>
+      </div>
+
+      <div class="dash-section">
+        <div class="dash-section-title">התפלגות לפי סטאטוס (גרף)</div>
+        <div class="chart-wrap"><canvas id="statusPieChart"></canvas></div>
+      </div>
+
+      <div class="dash-section">
+        <div class="dash-section-title">התפלגות לפי סוג כלי</div>
+        <div class="chart-wrap"><canvas id="vehicleTypePieChart"></canvas></div>
+      </div>
+
+      <div class="dash-section">
+        <div class="metric-card">
+          <div class="metric-number" id="pendingCatalogQty">0</div>
+          <div class="metric-label">כמות חלפים שהגיעו וממתינים לקטלוג</div>
+        </div>
+      </div>
+
+      <div class="dash-section">
+        <div class="dash-section-title">פריטים חדשים שהתקבלו (נופק)</div>
+        <input type="text" id="dashNewItemsFilterTz" class="search-input" placeholder="סינון לפי צ'" style="margin-bottom:10px">
+        <div id="dashNewItemsList"></div>
+      </div>
+
+      <div class="dash-section">
+        <div class="dash-section-title">סטאטוס בלאי</div>
+        <div id="blaiStatusRow" class="status-row"></div>
+      </div>
+
+      <button type="button" class="secondary" onclick="refreshDashboard(this)">🔄 רענן דאשבורד</button>
+    </div>
+  </div>
+
   <!-- FORM -->
-  <div id="formScreen" class="screen active">
+  <div id="formScreen" class="screen">
     <div class="form-wrap">
       <form id="orderForm">
 
@@ -352,6 +409,16 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
             <option value="">הכל</option><option value="כן">בתמורה</option><option value="לא">לא בתמורה</option>
           </select>
         </div>
+        <div style="margin-top:8px">
+          <select id="filterBlaiStatus" class="search-input" style="width:100%;font-size:13px;padding:9px">
+            <option value="">כל סטאטוסי הבלאי</option>
+            <option>יש חלק תקין ממתין למשיכה</option>
+            <option>ממתין לבלאי</option>
+            <option>בלאי ממתין לאיסוף</option>
+            <option>בלאי נשלח</option>
+            <option>אין בלאי</option>
+          </select>
+        </div>
         <button type="button" class="secondary" style="margin-top:8px" onclick="clearFilters()">נקה סינון</button>
       </div>
     </div>
@@ -413,7 +480,7 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v13.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v13.08.26.3'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -440,7 +507,7 @@ function doLogin(){
   document.getElementById('mainApp').style.display = 'block';
   document.getElementById('userBadge').textContent = currentUser;
   logActivity('כניסה לאפליקציה');
-  showTab('form');
+  showTab('dashboard');
 }
 function logout(){
   document.getElementById('mainApp').style.display = 'none';
@@ -454,12 +521,18 @@ function logout(){
 /* ============ TABS ============ */
 let dataLoaded = false;
 async function showTab(tab){
+  document.getElementById('dashboardScreen').classList.toggle('active', tab==='dashboard');
   document.getElementById('formScreen').classList.toggle('active', tab==='form');
   document.getElementById('listScreen').classList.toggle('active', tab==='list');
   document.getElementById('blaiScreen').classList.toggle('active', tab==='blai');
+  document.getElementById('tabDashboardBtn').classList.toggle('active', tab==='dashboard');
   document.getElementById('tabFormBtn').classList.toggle('active', tab==='form');
   document.getElementById('tabListBtn').classList.toggle('active', tab==='list');
   document.getElementById('tabBlaiBtn').classList.toggle('active', tab==='blai');
+  if(tab==='dashboard'){
+    if(!dataLoaded) await loadOrders();
+    renderDashboard();
+  }
   if(tab==='list'){
     if(!dataLoaded) await loadOrders();
     applyFilters();
@@ -840,6 +913,123 @@ async function loadOrders(){
     dataLoaded = false;
   }
 }
+/* ============ DASHBOARD ============ */
+const ALL_STATUSES = ['נשלח','הוזמן','אושר','נדחה','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
+const STATUS_CHART_COLORS = ['#78716c','#fbbf24','#f97316','#ef4444','#22c55e','#fbbf24','#22c55e','#f97316','#a855f7'];
+const BLAI_STATUSES_LIST = ['יש חלק תקין ממתין למשיכה','ממתין לבלאי','בלאי ממתין לאיסוף','בלאי נשלח','אין בלאי'];
+const PENDING_CATALOG_STATUSES = ['נופק','ממתין למשיכה','נמשך','נמשך חלקית'];
+
+async function refreshDashboard(btn){
+  const original = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ טוען...'; }
+  await loadOrders();
+  renderDashboard();
+  if(btn){ btn.disabled = false; btn.textContent = original; }
+}
+
+function renderDashboard(){
+  if(ordersCache === null){
+    document.getElementById('statusRow').innerHTML = '<div class="empty">שגיאה בטעינה — לחץ רענן</div>';
+    return;
+  }
+  renderStatusRow();
+  renderStatusPie();
+  renderVehicleTypePie();
+  renderPendingCatalog();
+  renderNewItemsList();
+  renderBlaiStatusRow();
+}
+
+function renderStatusRow(){
+  const total = ordersCache.length;
+  const container = document.getElementById('statusRow');
+  container.innerHTML = ALL_STATUSES.map(s=>{
+    const items = ordersCache.filter(o=>o['סטאטוס הזמנה']===s);
+    const count = items.length;
+    const pct = total ? Math.round(count/total*100) : 0;
+    const avgQty = count ? (items.reduce((sum,o)=>sum+(parseFloat(o['כמות שהוזמנה'])||0),0)/count).toFixed(1) : '0';
+    const badgeClass = 'b-' + s.replace(/ /g,'_');
+    return `<div class="status-box" onclick="goToFilteredStatus('${s}')">
+      <span class="badge ${badgeClass}">${s}</span>
+      <div class="status-num">${count}</div>
+      <div class="status-sub">${pct}% · ממוצע כמות ${avgQty}</div>
+    </div>`;
+  }).join('');
+}
+
+async function goToFilteredStatus(status){
+  await showTab('list');
+  document.getElementById('filtersDrawer').classList.remove('hidden');
+  document.getElementById('filterStatus').value = status;
+  applyFilters();
+}
+
+let statusPieChart = null;
+function renderStatusPie(){
+  const ctx = document.getElementById('statusPieChart');
+  if(!ctx || typeof Chart === 'undefined') return;
+  const counts = ALL_STATUSES.map(s=>ordersCache.filter(o=>o['סטאטוס הזמנה']===s).length);
+  if(statusPieChart) statusPieChart.destroy();
+  statusPieChart = new Chart(ctx, {
+    type:'pie',
+    data:{ labels: ALL_STATUSES, datasets:[{ data: counts, backgroundColor: STATUS_CHART_COLORS }] },
+    options:{ plugins:{ legend:{ position:'bottom', labels:{ color:'#f5f0e8', font:{size:11} } } } }
+  });
+}
+
+let vehicleTypePieChart = null;
+function renderVehicleTypePie(){
+  const ctx = document.getElementById('vehicleTypePieChart');
+  if(!ctx || typeof Chart === 'undefined') return;
+  const types = ['טנק','משאית','רכב','נשק','כלים'];
+  const counts = types.map(t=>ordersCache.filter(o=>o['סוג כלי']===t).length);
+  if(vehicleTypePieChart) vehicleTypePieChart.destroy();
+  vehicleTypePieChart = new Chart(ctx, {
+    type:'pie',
+    data:{ labels: types, datasets:[{ data: counts, backgroundColor:['#f59e0b','#60a5fa','#4ade80','#f87171','#a8a29e'] }] },
+    options:{ plugins:{ legend:{ position:'bottom', labels:{ color:'#f5f0e8', font:{size:11} } } } }
+  });
+}
+
+function renderPendingCatalog(){
+  const items = ordersCache.filter(o=>PENDING_CATALOG_STATUSES.includes(o['סטאטוס הזמנה']));
+  const totalQty = items.reduce((sum,o)=> sum + (parseFloat(o['כמות שאושרה'] || o['כמות שהוזמנה']) || 0), 0);
+  document.getElementById('pendingCatalogQty').textContent = totalQty;
+}
+
+function renderNewItemsList(){
+  const filterTz = document.getElementById('dashNewItemsFilterTz').value.trim();
+  let items = ordersCache.filter(o=>o['סטאטוס הזמנה']==='נופק');
+  if(filterTz) items = items.filter(o=>String(o["צ'"]||'').includes(filterTz));
+  items = items.slice().sort((a,b)=> new Date(String(b['תאריך הזמנה']||'')) - new Date(String(a['תאריך הזמנה']||'')));
+  const container = document.getElementById('dashNewItemsList');
+  if(!items.length){ container.innerHTML = '<div class="empty">אין פריטים</div>'; return; }
+  container.innerHTML = items.map(o=>`
+    <div class="order-card" onclick="openDetail('${o.id}')" style="cursor:pointer;margin-bottom:8px">
+      <div class="item">${o['תיאור']||''}</div>
+      <div class="meta">${String(o['תאריך הזמנה']||'').split('T')[0]} · מק"ט ${o['מקט']||''} · צ' ${o["צ'"]||''}</div>
+    </div>`).join('');
+}
+document.getElementById('dashNewItemsFilterTz').addEventListener('input', renderNewItemsList);
+
+function renderBlaiStatusRow(){
+  const container = document.getElementById('blaiStatusRow');
+  container.innerHTML = BLAI_STATUSES_LIST.map(s=>{
+    const count = ordersCache.filter(o=>o['סטאטוס בלאי']===s).length;
+    const badgeClass = 'b-' + s.replace(/ /g,'_');
+    return `<div class="status-box" onclick="goToFilteredBlai('${s.replace(/'/g,"\\'")}')">
+      <span class="badge ${badgeClass}" style="font-size:10px">${s}</span>
+      <div class="status-num">${count}</div>
+    </div>`;
+  }).join('');
+}
+async function goToFilteredBlai(blaiStatus){
+  await showTab('list');
+  document.getElementById('filtersDrawer').classList.remove('hidden');
+  document.getElementById('filterBlaiStatus').value = blaiStatus;
+  applyFilters();
+}
+
 const BLAI_REPORT_STATUSES = ['אושר','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
 function renderBlaiReport(){
   const list = document.getElementById('blaiList');
@@ -963,7 +1153,8 @@ function updateFiltersButtonLabel_(){
   const fStatus = document.getElementById('filterStatus').value;
   const fSpecial = document.getElementById('filterSpecial').value;
   const fTemura = document.getElementById('filterTemura').value;
-  const count = [fDate,fTz,fModel,fStatus,fSpecial,fTemura].filter(Boolean).length;
+  const fBlaiStatus = document.getElementById('filterBlaiStatus').value;
+  const count = [fDate,fTz,fModel,fStatus,fSpecial,fTemura,fBlaiStatus].filter(Boolean).length;
   document.getElementById('filtersToggleBtn').textContent = count ? `☰ סינונים (${count})` : '☰ סינונים';
 }
 function applyFilters(){
@@ -976,6 +1167,7 @@ function applyFilters(){
   const fStatus = document.getElementById('filterStatus').value;
   const fSpecial = document.getElementById('filterSpecial').value;
   const fTemura = document.getElementById('filterTemura').value;
+  const fBlaiStatus = document.getElementById('filterBlaiStatus').value;
 
   const filtered = ordersCache.filter(o=>{
     if(q){
@@ -991,6 +1183,7 @@ function applyFilters(){
     if(fStatus && o['סטאטוס הזמנה'] !== fStatus) return false;
     if(fSpecial && o['חלק מיוחד'] !== fSpecial) return false;
     if(fTemura && o['האם בתמורה'] !== fTemura) return false;
+    if(fBlaiStatus && o['סטאטוס בלאי'] !== fBlaiStatus) return false;
     return true;
   });
   renderOrders(filtered);
@@ -1007,12 +1200,13 @@ function clearFilters(){
   document.getElementById('filterStatus').value = '';
   document.getElementById('filterSpecial').value = '';
   document.getElementById('filterTemura').value = '';
+  document.getElementById('filterBlaiStatus').value = '';
   renderOrders(ordersCache);
 }
 ['search','filterTz','filterModel'].forEach(id=>{
   document.getElementById(id).addEventListener('input', applyFilters);
 });
-['filterDate','filterStatus','filterSpecial','filterTemura'].forEach(id=>{
+['filterDate','filterStatus','filterSpecial','filterTemura','filterBlaiStatus'].forEach(id=>{
   document.getElementById(id).addEventListener('change', applyFilters);
 });
 
