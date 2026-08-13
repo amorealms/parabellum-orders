@@ -121,6 +121,28 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 .metric-label{font-size:12px;color:var(--muted);margin-top:4px}
 .chart-wrap{position:relative;height:230px}
 
+/* MULTI-SELECT */
+.select-checkbox{width:20px;height:20px;margin-left:8px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.selected-card{border-color:var(--accent) !important;background:rgba(245,158,11,.06)}
+#bulkActionBar{display:flex;gap:8px;align-items:center;padding:10px 14px;background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:96px;z-index:150}
+
+/* THEMES */
+body.theme-light{
+  --bg:#eeece4; --white:#ffffff; --border:#d6d3c5;
+  --accent:#b45309; --accent-light:#fef3e2;
+  --text:#1c1a17; --muted:#78716c;
+}
+body.theme-navy{
+  --bg:#0a1628; --white:#132540; --border:#1e3a5f;
+  --accent:#d4af37; --accent-light:#2a2410;
+  --text:#eef2f7; --muted:#8a9bb5;
+}
+body.theme-steel{
+  --bg:#292b30; --white:#34363b; --border:#454850;
+  --accent:#94a3b8; --accent-light:#2a2d33;
+  --text:#e5e7eb; --muted:#9aa0a8;
+}
+
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111;padding:10px 14px 10px 18px;border-radius:16px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:400;max-width:90vw;display:flex;align-items:center;gap:10px}
 .toast.show{opacity:1;pointer-events:auto}
 .toast.error{background:var(--red-bg);color:var(--red);border:1.5px solid var(--red-border)}
@@ -159,13 +181,14 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
     <input type="text" class="name-input" id="nameInput" placeholder="שם..." oninput="onNameType()">
     <button class="login-btn" id="loginBtn" onclick="doLogin()" disabled>כניסה →</button>
   </div>
+  <button type="button" onclick="openThemePicker()" style="margin-top:14px;background:none;border:1.5px solid var(--border);color:var(--muted);padding:8px 18px;border-radius:20px;font-size:13px;cursor:pointer">🎨 עיצוב</button>
 </div>
 
 <!-- MAIN APP -->
 <div id="mainApp" style="display:none">
   <div class="topbar">
     <div class="topbar-title">מעקב הזמנות <span id="versionBadgeTop" style="font-size:10px;color:var(--muted);font-weight:400"></span></div>
-    <button type="button" id="pendingSyncBtn" class="hidden" onclick="syncPendingOrders()" style="background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer">🔄 סנכרן</button>
+    <button type="button" id="pendingSyncBtn" class="hidden" onclick="openSyncPreview()" style="background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer">🔄 סנכרן</button>
     <button type="button" id="errorLogBtn" onclick="openErrorLog()" style="background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border);font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;cursor:pointer">🐞 יומן</button>
     <div class="user-badge" id="userBadge" onclick="logout()">—</div>
   </div>
@@ -421,6 +444,12 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
         </div>
         <button type="button" class="secondary" style="margin-top:8px" onclick="clearFilters()">נקה סינון</button>
       </div>
+      <button type="button" class="secondary" id="selectModeBtn" style="margin-top:8px" onclick="toggleSelectMode()">☑ בחר הזמנות</button>
+    </div>
+    <div id="bulkActionBar" class="hidden">
+      <span style="font-size:13px;color:var(--muted)"><span id="bulkCount">0</span> נבחרו</span>
+      <button type="button" class="secondary" style="margin:0;flex:1;padding:8px;font-size:12px" onclick="bulkWhatsApp()">📱 הודעה</button>
+      <button type="button" class="secondary" style="margin:0;flex:1;padding:8px;font-size:12px;border-color:var(--red);color:var(--red)" onclick="bulkDeleteSelected()">🗑️ מחק נבחרים</button>
     </div>
     <div id="ordersList" class="items-list"><div class="empty">טוען...</div></div>
   </div>
@@ -434,6 +463,40 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
     <div id="blaiList" class="items-list"><div class="empty">טוען...</div></div>
   </div>
 
+</div>
+
+<div class="modal-overlay hidden" id="bulkWaModal" onclick="if(event.target===this) closeBulkWaModal()">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeBulkWaModal()">✕</button>
+    <h3 style="color:var(--accent);margin-bottom:10px;padding-left:24px">📱 הודעה מרוכזת</h3>
+    <pre id="bulkWaText" style="white-space:pre-wrap;font-size:13px;background:#1a1a1a;border:1px solid var(--border);border-radius:10px;padding:10px;max-height:320px;overflow-y:auto"></pre>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="copyBulkWaText()">📋 העתק</button>
+      <a id="bulkWaSendLink" target="_blank" style="margin-top:0;flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--accent);border-radius:var(--r);color:var(--accent);font-weight:700;padding:12px">שלח בוואטסאפ</a>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="syncPreviewModal" onclick="if(event.target===this) closeSyncPreview()">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeSyncPreview()">✕</button>
+    <h3 style="color:var(--accent);margin-bottom:10px;padding-left:24px">🔄 הזמנות ממתינות לסנכרון</h3>
+    <div id="syncPreviewContent"></div>
+    <button type="button" class="primary" style="margin-top:14px" onclick="confirmFullSync()">✅ סנכרן הכל</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="themeModal" onclick="if(event.target===this) closeThemePicker()">
+  <div class="modal-card" style="max-width:320px">
+    <button class="modal-close" onclick="closeThemePicker()">✕</button>
+    <h3 style="color:var(--accent);margin-bottom:14px;padding-left:24px">🎨 בחירת עיצוב</h3>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button type="button" class="secondary" style="margin-top:0" onclick="applyTheme('')">שחור + ענבר (ברירת מחדל)</button>
+      <button type="button" class="secondary" style="margin-top:0" onclick="applyTheme('theme-light')">לבן/שחור (יום)</button>
+      <button type="button" class="secondary" style="margin-top:0" onclick="applyTheme('theme-navy')">נייבי + זהב (רשמי)</button>
+      <button type="button" class="secondary" style="margin-top:0" onclick="applyTheme('theme-steel')">אפור פלדה (נייטרלי)</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-overlay hidden" id="detailModal" onclick="if(event.target===this) closeDetail()">
@@ -480,11 +543,13 @@ button.secondary{width:100%;padding:12px;border-radius:var(--r);border:1.5px sol
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v13.08.26.3'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v13.08.26.4'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
 let ordersCache = [];
+let selectMode = false;
+let selectedOrderIds = new Set();
 let selectedReasons = new Set();
 
 /* ============ LOGIN ============ */
@@ -870,6 +935,38 @@ function updatePendingBadge(){
     btn.classList.add('hidden');
   }
 }
+function openSyncPreview(){
+  renderSyncPreview();
+  document.getElementById('syncPreviewModal').classList.remove('hidden');
+}
+function closeSyncPreview(){
+  document.getElementById('syncPreviewModal').classList.add('hidden');
+}
+function renderSyncPreview(){
+  const pending = getPendingOrders();
+  const container = document.getElementById('syncPreviewContent');
+  if(!pending.length){
+    container.innerHTML = '<div class="empty">אין הזמנות ממתינות</div>';
+    return;
+  }
+  container.innerHTML = pending.map((item, idx)=>`
+    <div class="order-card" style="margin-bottom:8px">
+      <div class="item">${item.data['תיאור']||''}</div>
+      <div class="meta">מק"ט ${item.data['מקט']||''} · צ' ${item.data["צ'"]||''} · ${item.savedAt ? new Date(item.savedAt).toLocaleString('he-IL') : ''}</div>
+      <button type="button" class="secondary" style="margin-top:8px;border-color:var(--red);color:var(--red);padding:6px;font-size:12px" onclick="removePendingOrder(${idx})">🗑️ הסר מהתור</button>
+    </div>`).join('');
+}
+function removePendingOrder(idx){
+  const pending = getPendingOrders();
+  pending.splice(idx, 1);
+  setPendingOrders(pending);
+  renderSyncPreview();
+  if(getPendingOrders().length === 0) closeSyncPreview();
+}
+async function confirmFullSync(){
+  closeSyncPreview();
+  await syncPendingOrders();
+}
 async function syncPendingOrders(){
   const pending = getPendingOrders();
   if(!pending.length){ showToast('אין הזמנות ממתינות'); return; }
@@ -1060,9 +1157,13 @@ function renderOrders(orders){
   list.innerHTML = orders.slice().reverse().map(o=>{
     const badgeClass = 'b-' + (o['סטאטוס הזמנה']||'נשלח').replace(/ /g,'_');
     const blaiBadge = o['האם בתמורה']==='כן' ? `<span class="badge" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)">בתמורה</span>` : '';
+    const isSelected = selectedOrderIds.has(o.id);
+    const checkbox = selectMode ? `<input type="checkbox" class="select-checkbox" onclick="event.stopPropagation(); toggleOrderSelection('${o.id}')" ${isSelected?'checked':''}>` : '';
+    const topClick = selectMode ? `toggleOrderSelection('${o.id}')` : `openDetail('${o.id}')`;
     return `
-    <div class="order-card">
-      <div class="top" onclick="openDetail('${o.id}')" style="cursor:pointer">
+    <div class="order-card ${isSelected?'selected-card':''}">
+      <div class="top" onclick="${topClick}" style="cursor:pointer">
+        ${checkbox}
         <div>
           <div class="item">${o['תיאור']||''}</div>
           <div class="meta">מק"ט ${o['מקט']||''} · צ' ${o["צ'"]||''} · כמות ${o['כמות שהוזמנה']||''}</div>
@@ -1072,6 +1173,7 @@ function renderOrders(orders){
           ${blaiBadge}
         </div>
       </div>
+      ${selectMode ? '' : `
       <select class="status-select" onchange="updateStatus('${o.id}', this.value)">
         ${statuses.map(s=>`<option value="${s}" ${s===o['סטאטוס הזמנה']?'selected':''}>${s}</option>`).join('')}
       </select>
@@ -1083,7 +1185,7 @@ function renderOrders(orders){
       <details style="margin-top:8px">
         <summary style="font-size:11px;color:var(--muted);cursor:pointer">היסטוריית סטאטוסים</summary>
         ${renderStatusLogTable(o['לוג סטאטוס'])}
-      </details>` : ''}
+      </details>` : ''}`}
     </div>`;
   }).join('');
 }
@@ -1188,6 +1290,75 @@ function applyFilters(){
   });
   renderOrders(filtered);
 }
+/* ============ MULTI-SELECT ============ */
+function toggleSelectMode(){
+  selectMode = !selectMode;
+  selectedOrderIds.clear();
+  document.getElementById('selectModeBtn').textContent = selectMode ? '✖ בטל בחירה' : '☑ בחר הזמנות';
+  document.getElementById('bulkActionBar').classList.toggle('hidden', !selectMode);
+  updateBulkCount_();
+  applyFilters();
+}
+function toggleOrderSelection(id){
+  if(selectedOrderIds.has(id)) selectedOrderIds.delete(id); else selectedOrderIds.add(id);
+  updateBulkCount_();
+  applyFilters();
+}
+function updateBulkCount_(){
+  document.getElementById('bulkCount').textContent = selectedOrderIds.size;
+}
+function exitSelectMode_(){
+  selectMode = false;
+  selectedOrderIds.clear();
+  document.getElementById('selectModeBtn').textContent = '☑ בחר הזמנות';
+  document.getElementById('bulkActionBar').classList.add('hidden');
+}
+async function bulkDeleteSelected(){
+  if(selectedOrderIds.size === 0){ showToast('לא נבחרו הזמנות'); return; }
+  const ids = [...selectedOrderIds];
+  if(!confirm(`למחוק ${ids.length} הזמנות? הפעולה לא ניתנת לביטול.`)) return;
+  logActivity('מחיקה קבוצתית', `ניסיון מחיקת ${ids.length} הזמנות`);
+  let successCount = 0;
+  for(const id of ids){
+    const result = await fetchJsonWithRetry_(SCRIPT_URL, {
+      method:'POST',
+      body: new URLSearchParams({action:'delete', data: JSON.stringify({id})})
+    }, 1);
+    if(result.ok && result.json.success){
+      successCount++;
+      ordersCache = ordersCache.filter(o=>o.id!==id);
+    }else{
+      const detail = result.ok ? (result.json.error||'') : (result.kind==='not_json' ? result.raw.slice(0,200) : result.err.message);
+      logError('מחיקה קבוצתית', `נכשלה עבור id=${id}`, detail);
+    }
+  }
+  logActivity('מחיקה קבוצתית', `הצליחה עבור ${successCount} מתוך ${ids.length}`);
+  showToast(`נמחקו ${successCount} מתוך ${ids.length}`);
+  exitSelectMode_();
+  applyFilters();
+}
+function bulkWhatsApp(){
+  if(selectedOrderIds.size === 0){ showToast('לא נבחרו הזמנות'); return; }
+  const items = ordersCache.filter(o=>selectedOrderIds.has(o.id));
+  const blocks = items.map(o=>{
+    const kli = [o['סוג כלי'], o['מודל']].filter(Boolean).join(' ');
+    let lines = [`גדוד: ${BATTALION_NAME}`, `צ: ${o["צ'"]||''}`, `כלי: ${kli||'-'}`];
+    if(o["צ' עומד"] === 'משבית') lines.push('מושבת');
+    lines.push(`מקט: ${o['מקט']||''}`, `כמות: ${o['כמות שהוזמנה']||''}`, `שם פריט: ${o['תיאור']||''}`);
+    return lines.join('\n');
+  });
+  const fullText = blocks.join('\n\n---\n\n');
+  document.getElementById('bulkWaText').textContent = fullText;
+  document.getElementById('bulkWaSendLink').href = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(fullText);
+  document.getElementById('bulkWaModal').classList.remove('hidden');
+}
+function copyBulkWaText(){
+  navigator.clipboard.writeText(document.getElementById('bulkWaText').textContent).then(()=> showToast('הועתק ללוח'));
+}
+function closeBulkWaModal(){
+  document.getElementById('bulkWaModal').classList.add('hidden');
+}
+
 function toggleFiltersDrawer(){
   const drawer = document.getElementById('filtersDrawer');
   drawer.classList.toggle('hidden');
@@ -1367,6 +1538,26 @@ function hideToast(){
   document.getElementById('toast').classList.remove('show');
   if(toastTimer) clearTimeout(toastTimer);
 }
+
+/* ============ THEME PICKER ============ */
+const THEME_KEY = 'parabellum_theme';
+const THEME_CLASSES = ['theme-light','theme-navy','theme-steel'];
+function applyTheme(cls){
+  THEME_CLASSES.forEach(c=>document.body.classList.remove(c));
+  if(cls) document.body.classList.add(cls);
+  localStorage.setItem(THEME_KEY, cls);
+  closeThemePicker();
+}
+function openThemePicker(){
+  document.getElementById('themeModal').classList.remove('hidden');
+}
+function closeThemePicker(){
+  document.getElementById('themeModal').classList.add('hidden');
+}
+(function(){
+  const saved = localStorage.getItem(THEME_KEY);
+  if(saved) document.body.classList.add(saved);
+})();
 
 document.querySelector('input[name="תאריך הזמנה"]').valueAsDate = new Date();
 </script>
