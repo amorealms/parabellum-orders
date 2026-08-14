@@ -297,6 +297,7 @@ body.theme-steel{
           <div class="field hidden" id="blaiField">
             <label>סטאטוס בלאי <span style="font-weight:400;color:var(--muted)">(מוצג רק מסטאטוס נופק ואילך)</span></label>
             <select name="סטאטוס בלאי">
+              <option value=""></option>
               <option>יש חלק תקין ממתין למשיכה</option>
               <option>ממתין לבלאי</option>
               <option>בלאי ממתין לאיסוף</option>
@@ -449,7 +450,7 @@ body.theme-steel{
     <div id="bulkActionBar" class="hidden">
       <span style="font-size:13px;color:var(--muted)"><span id="bulkCount">0</span> נבחרו</span>
       <button type="button" class="secondary" style="margin:0;flex:1;padding:8px;font-size:12px" onclick="bulkWhatsApp()">📱 הודעה</button>
-      <button type="button" class="secondary" style="margin:0;flex:1;padding:8px;font-size:12px;border-color:var(--red);color:var(--red)" onclick="bulkDeleteSelected()">🗑️ מחק נבחרים</button>
+      <button type="button" class="secondary" style="margin:0;flex:1;padding:8px;font-size:12px;border-color:var(--red);color:var(--red)" id="bulkDeleteBtn" onclick="bulkDeleteSelected(this)">🗑️ מחק נבחרים</button>
     </div>
     <div id="ordersList" class="items-list"><div class="empty">טוען...</div></div>
   </div>
@@ -543,7 +544,7 @@ body.theme-steel{
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v13.08.26.4'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v13.08.26.5'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -654,7 +655,7 @@ function buildWhatsAppPreview(){
   const f = document.getElementById('orderForm');
   const fd = new FormData(f);
   const tzomed = fd.get("צ' עומד");
-  const kli = [fd.get('סוג כלי'), fd.get('מודל')].filter(Boolean).join(' ');
+  const kli = fd.get('מודל') || '';
 
   let lines = [];
   lines.push(`גדוד: ${BATTALION_NAME}`);
@@ -1112,7 +1113,7 @@ document.getElementById('dashNewItemsFilterTz').addEventListener('input', render
 function renderBlaiStatusRow(){
   const container = document.getElementById('blaiStatusRow');
   container.innerHTML = BLAI_STATUSES_LIST.map(s=>{
-    const count = ordersCache.filter(o=>o['סטאטוס בלאי']===s).length;
+    const count = ordersCache.filter(o=>o['סטאטוס בלאי']===s && o['האם בתמורה']==='כן').length;
     const badgeClass = 'b-' + s.replace(/ /g,'_');
     return `<div class="status-box" onclick="goToFilteredBlai('${s.replace(/'/g,"\\'")}')">
       <span class="badge ${badgeClass}" style="font-size:10px">${s}</span>
@@ -1124,6 +1125,7 @@ async function goToFilteredBlai(blaiStatus){
   await showTab('list');
   document.getElementById('filtersDrawer').classList.remove('hidden');
   document.getElementById('filterBlaiStatus').value = blaiStatus;
+  document.getElementById('filterTemura').value = 'כן';
   applyFilters();
 }
 
@@ -1313,13 +1315,17 @@ function exitSelectMode_(){
   document.getElementById('selectModeBtn').textContent = '☑ בחר הזמנות';
   document.getElementById('bulkActionBar').classList.add('hidden');
 }
-async function bulkDeleteSelected(){
+async function bulkDeleteSelected(btn){
   if(selectedOrderIds.size === 0){ showToast('לא נבחרו הזמנות'); return; }
   const ids = [...selectedOrderIds];
   if(!confirm(`למחוק ${ids.length} הזמנות? הפעולה לא ניתנת לביטול.`)) return;
   logActivity('מחיקה קבוצתית', `ניסיון מחיקת ${ids.length} הזמנות`);
+  const original = btn ? btn.textContent : null;
+  if(btn) btn.disabled = true;
   let successCount = 0;
-  for(const id of ids){
+  for(let i=0; i<ids.length; i++){
+    const id = ids[i];
+    if(btn) btn.textContent = `⏳ מוחק (${i+1}/${ids.length})...`;
     const result = await fetchJsonWithRetry_(SCRIPT_URL, {
       method:'POST',
       body: new URLSearchParams({action:'delete', data: JSON.stringify({id})})
@@ -1332,6 +1338,7 @@ async function bulkDeleteSelected(){
       logError('מחיקה קבוצתית', `נכשלה עבור id=${id}`, detail);
     }
   }
+  if(btn){ btn.disabled = false; btn.textContent = original; }
   logActivity('מחיקה קבוצתית', `הצליחה עבור ${successCount} מתוך ${ids.length}`);
   showToast(`נמחקו ${successCount} מתוך ${ids.length}`);
   exitSelectMode_();
@@ -1341,7 +1348,7 @@ function bulkWhatsApp(){
   if(selectedOrderIds.size === 0){ showToast('לא נבחרו הזמנות'); return; }
   const items = ordersCache.filter(o=>selectedOrderIds.has(o.id));
   const blocks = items.map(o=>{
-    const kli = [o['סוג כלי'], o['מודל']].filter(Boolean).join(' ');
+    const kli = o['מודל'] || '';
     let lines = [`גדוד: ${BATTALION_NAME}`, `צ: ${o["צ'"]||''}`, `כלי: ${kli||'-'}`];
     if(o["צ' עומד"] === 'משבית') lines.push('מושבת');
     lines.push(`מקט: ${o['מקט']||''}`, `כמות: ${o['כמות שהוזמנה']||''}`, `שם פריט: ${o['תיאור']||''}`);
