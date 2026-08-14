@@ -261,15 +261,13 @@ body.theme-steel{
             <label>תיאור / שם פריט</label>
             <input type="text" name="תיאור" required>
           </div>
-          <div class="row2">
-            <div class="field">
-              <label>כמות שהוזמנה</label>
-              <input type="number" name="כמות שהוזמנה" min="1" required>
-            </div>
-            <div class="field">
-              <label>כמות שאושרה</label>
-              <input type="number" name="כמות שאושרה" min="0">
-            </div>
+          <div class="field">
+            <label>כמות שהוזמנה</label>
+            <input type="number" name="כמות שהוזמנה" min="1" required>
+          </div>
+          <div class="field hidden" id="approvedQtyField">
+            <label>כמות שאושרה</label>
+            <input type="number" name="כמות שאושרה" min="0">
           </div>
           <div class="field">
             <label>סיבה להזמנה</label>
@@ -369,6 +367,10 @@ body.theme-steel{
               <option>נמשך חלקית</option>
               <option>קוטלג</option>
             </select>
+          </div>
+          <div class="field">
+            <label>תאריך שינוי בפועל <span style="font-weight:400;color:var(--muted)">(אופציונלי — לעדכון רטרואקטיבי בלוג הסטאטוסים)</span></label>
+            <input type="date" name="תאריך שינוי בפועל" id="manualLogDate">
           </div>
           <div class="field hidden" id="rejectField">
             <label>סיבת דחייה</label>
@@ -544,7 +546,7 @@ body.theme-steel{
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v13.08.26.5'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v14.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -633,17 +635,23 @@ document.getElementById('reasonChips').addEventListener('click', e=>{
 });
 
 /* ============ CONDITIONAL FIELDS ============ */
-const BLAI_ELIGIBLE_STATUSES = ['נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
+// Shared threshold — "from אושר onward" — used for both כמות שאושרה and סטאטוס בלאי
+const STATUS_FROM_APPROVED = ['אושר','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
 function updateBlaiVisibility(){
   const temura = document.getElementById('temuraSelect').value;
   const status = document.getElementById('statusSelect').value;
-  const show = temura === 'כן' && BLAI_ELIGIBLE_STATUSES.includes(status);
+  const show = temura === 'כן' && STATUS_FROM_APPROVED.includes(status);
   document.getElementById('blaiField').classList.toggle('hidden', !show);
+}
+function updateApprovedQtyVisibility(){
+  const status = document.getElementById('statusSelect').value;
+  document.getElementById('approvedQtyField').classList.toggle('hidden', !STATUS_FROM_APPROVED.includes(status));
 }
 document.getElementById('statusSelect').addEventListener('change', e=>{
   document.getElementById('rejectField').classList.toggle('hidden', e.target.value !== 'נדחה');
   document.getElementById('partialField').classList.toggle('hidden', e.target.value !== 'נמשך חלקית');
   updateBlaiVisibility();
+  updateApprovedQtyVisibility();
 });
 document.getElementById('rejectReason').addEventListener('change', e=>{
   document.getElementById('rejectOther').classList.toggle('hidden', e.target.value !== 'אחר');
@@ -708,6 +716,7 @@ function editOrder(id){
   document.getElementById('rejectField').classList.toggle('hidden', o['סטאטוס הזמנה'] !== 'נדחה');
   document.getElementById('partialField').classList.toggle('hidden', o['סטאטוס הזמנה'] !== 'נמשך חלקית');
   updateBlaiVisibility();
+  updateApprovedQtyVisibility();
   document.querySelector('#orderForm button[type="submit"]').textContent = '💾 עדכן הזמנה';
   showTab('form');
 }
@@ -731,7 +740,9 @@ function buildFieldRows_(o){
     ['סטאטוס הזמנה', o['סטאטוס הזמנה']],
     ['סיבת דחייה', o['סיבת דחייה']],
     ['כמות שנמשכה', o['כמות שנמשכה']],
-    ['סטאטוס בלאי', o['סטאטוס בלאי']],
+    // "סטאטוס בלאי" is only meaningful when בתמורה=כן — hide it otherwise,
+    // even if the stored value is non-empty (covers old rows with the pre-fix default)
+    ...(o['האם בתמורה'] === 'כן' ? [['סטאטוס בלאי', o['סטאטוס בלאי']]] : []),
     ['הוזמן ע"י', o['הוזמן עי']],
     ['הערות', o['הערות']],
   ].filter(([,val]) => val !== undefined && val !== '');
@@ -805,9 +816,15 @@ document.getElementById('orderForm').addEventListener('submit', async e=>{
   const data = {};
   fd.forEach((v,k)=> data[k]=v);
   data['סיבה להזמנה'] = [...selectedReasons].join(', ');
-  data['הוזמן עי'] = currentUser || '';
-  data['עודכן עי'] = currentUser || '';
   const wasEditing = editingId;
+  if(!wasEditing){
+    data['הוזמן עי'] = currentUser || ''; // set only once, at creation — never overwritten on later edits
+  }
+  data['עודכן עי'] = currentUser || ''; // tracks who last touched it — always updates
+  if(data['תאריך שינוי בפועל']){
+    const [y,m,d] = data['תאריך שינוי בפועל'].split('-');
+    data['תאריך שינוי בפועל'] = `${d}/${m}/${y}`; // match dd/MM/yyyy used elsewhere in the log
+  }
   if(wasEditing) data.id = wasEditing;
   await attemptSave(data, wasEditing ? 'update' : 'add');
 });
@@ -883,6 +900,10 @@ function resetFormToBlank_(){
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected'));
   document.getElementById('waBox').classList.remove('show');
   document.querySelector('input[name="תאריך הזמנה"]').valueAsDate = new Date();
+  document.getElementById('rejectField').classList.add('hidden');
+  document.getElementById('partialField').classList.add('hidden');
+  updateBlaiVisibility();
+  updateApprovedQtyVisibility();
   editingId = null;
   document.querySelector('#orderForm button[type="submit"]').textContent = '💾 שמור הזמנה';
 }
