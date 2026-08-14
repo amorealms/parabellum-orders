@@ -375,6 +375,7 @@ body.theme-steel{
           <div class="field hidden" id="rejectField">
             <label>סיבת דחייה</label>
             <select name="סיבת דחייה" id="rejectReason">
+              <option value=""></option>
               <option value="אין במלאי">אין במלאי</option>
               <option value="נדרש אישור בוחן">נדרש אישור בוחן</option>
               <option value="אחר">אחר</option>
@@ -546,7 +547,7 @@ body.theme-steel{
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v14.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v14.08.26.3'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -738,7 +739,7 @@ function buildFieldRows_(o){
     ['חלק מיוחד', o['חלק מיוחד']],
     ['האם בתמורה', o['האם בתמורה']],
     ['סטאטוס הזמנה', o['סטאטוס הזמנה']],
-    ['סיבת דחייה', o['סיבת דחייה']],
+    ...(o['סטאטוס הזמנה'] === 'נדחה' ? [['סיבת דחייה', o['סיבת דחייה']]] : []),
     ['כמות שנמשכה', o['כמות שנמשכה']],
     // "סטאטוס בלאי" is only meaningful when בתמורה=כן — hide it otherwise,
     // even if the stored value is non-empty (covers old rows with the pre-fix default)
