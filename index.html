@@ -413,6 +413,12 @@ body.theme-steel{
   <div id="listScreen" class="screen">
     <div class="search-wrap">
       <input type="text" id="search" class="search-input" placeholder="חיפוש לפי צ', מק&quot;ט, תיאור...">
+      <select id="sortOrderSelect" class="search-input" style="margin-top:8px">
+        <option value="">מיון: לאחרונה נוסף (ברירת מחדל)</option>
+        <option value="date_desc">תאריך הזמנה: חדש ← ישן</option>
+        <option value="date_asc">תאריך הזמנה: ישן ← חדש</option>
+        <option value="status">סטאטוס (לפי סדר תהליך)</option>
+      </select>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button type="button" class="secondary" style="margin-top:0;flex:1" id="filtersToggleBtn" onclick="toggleFiltersDrawer()">☰ סינונים</button>
         <button type="button" class="secondary" style="margin-top:0;flex:1" onclick="refreshOrders(this)">🔄 רענן</button>
@@ -584,7 +590,7 @@ body.theme-steel{
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v15.08.26.1'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v27.08.26.1'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -845,7 +851,7 @@ async function deleteOrderConfirm(id, btn){
   logActivity('מחיקת הזמנה', `הצליחה (id: ${id})`);
   showToast('ההזמנה נמחקה');
   ordersCache = ordersCache.filter(o=>o.id!==id);
-  renderOrders(ordersCache); // re-render removes the card, so no need to restore the button
+  applyFilters(); // re-render removes the card, respects active filters/sort
 }
 
 document.getElementById('orderForm').addEventListener('submit', async e=>{
@@ -1215,7 +1221,7 @@ function renderOrders(orders){
   if(orders === null){ list.innerHTML = '<div class="empty">שגיאה בטעינה — בדוק חיבור<br><button type="button" class="secondary" style="margin-top:10px;max-width:220px" onclick="refreshOrders(this)">🔄 נסה שוב</button></div>'; return; }
   if(!orders.length){ list.innerHTML = '<div class="empty">אין הזמנות עדיין</div>'; return; }
   const statuses = ['נשלח','הוזמן','אושר','נדחה','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
-  list.innerHTML = orders.slice().reverse().map(o=>{
+  list.innerHTML = orders.map(o=>{
     const badgeClass = 'b-' + (o['סטאטוס הזמנה']||'נשלח').replace(/ /g,'_');
     const blaiBadge = o['האם בתמורה']==='כן' ? `<span class="badge" style="background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)">בתמורה</span>` : '';
     const isSelected = selectedOrderIds.has(o.id);
@@ -1277,12 +1283,12 @@ async function updateStatus(id, newStatus){
 
   if(newStatus === 'נמשך חלקית'){
     const qty = prompt('כמה נמשך בפועל עד כה? (כמות מצטברת)');
-    if(qty === null){ renderOrders(ordersCache); return; } // cancelled — revert dropdown to old value
+    if(qty === null){ applyFilters(); return; } // cancelled — revert dropdown to old value
     payload['כמות שנמשכה'] = qty;
   }
   if(newStatus === 'נדחה'){
     const reason = prompt('סיבת דחייה (אין במלאי / נדרש אישור בוחן / אחר — פרט):');
-    if(reason === null){ renderOrders(ordersCache); return; }
+    if(reason === null){ applyFilters(); return; }
     payload['סיבת דחייה'] = reason;
   }
 
@@ -1320,6 +1326,21 @@ function updateFiltersButtonLabel_(){
   const count = [fDate,fTz,fModel,fStatus,fSpecial,fTemura,fBlaiStatus].filter(Boolean).length;
   document.getElementById('filtersToggleBtn').textContent = count ? `☰ סינונים (${count})` : '☰ סינונים';
 }
+const STATUS_PROCESS_ORDER = ['נשלח','הוזמן','אושר','נדחה','נופק','ממתין למשיכה','נמשך','נמשך חלקית','קוטלג'];
+function sortOrdersList_(list){
+  const arr = list.slice();
+  const sortBy = document.getElementById('sortOrderSelect').value;
+  if(sortBy === 'date_desc'){
+    arr.sort((a,b)=> new Date(String(b['תאריך הזמנה']||'')) - new Date(String(a['תאריך הזמנה']||'')));
+  }else if(sortBy === 'date_asc'){
+    arr.sort((a,b)=> new Date(String(a['תאריך הזמנה']||'')) - new Date(String(b['תאריך הזמנה']||'')));
+  }else if(sortBy === 'status'){
+    arr.sort((a,b)=> STATUS_PROCESS_ORDER.indexOf(a['סטאטוס הזמנה']) - STATUS_PROCESS_ORDER.indexOf(b['סטאטוס הזמנה']));
+  }else{
+    arr.reverse(); // default — most recently added row first, same as before
+  }
+  return arr;
+}
 function applyFilters(){
   if(ordersCache === null){ return; }
   updateFiltersButtonLabel_();
@@ -1349,8 +1370,9 @@ function applyFilters(){
     if(fBlaiStatus && o['סטאטוס בלאי'] !== fBlaiStatus) return false;
     return true;
   });
-  renderOrders(filtered);
+  renderOrders(sortOrdersList_(filtered));
 }
+document.getElementById('sortOrderSelect').addEventListener('change', applyFilters);
 /* ============ MULTI-SELECT ============ */
 function toggleSelectMode(){
   selectMode = !selectMode;
@@ -1551,7 +1573,7 @@ function clearFilters(){
   document.getElementById('filterSpecial').value = '';
   document.getElementById('filterTemura').value = '';
   document.getElementById('filterBlaiStatus').value = '';
-  renderOrders(ordersCache);
+  applyFilters();
 }
 ['search','filterTz','filterModel'].forEach(id=>{
   document.getElementById(id).addEventListener('input', applyFilters);
