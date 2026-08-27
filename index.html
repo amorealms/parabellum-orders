@@ -426,8 +426,10 @@ body.theme-steel{
       <div id="filtersDrawer" class="hidden" style="margin-top:8px">
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <input type="date" id="filterDate" class="search-input" style="flex:1;min-width:130px;font-size:13px;padding:9px">
-          <input type="text" id="filterTz" placeholder="סינון לפי צ'" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
-          <input type="text" id="filterModel" placeholder="סינון לפי מודל" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+          <input type="text" id="filterTz" list="tzFilterList" placeholder="סינון לפי צ'" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+          <input type="text" id="filterModel" list="modelFilterList" placeholder="סינון לפי מודל" class="search-input" style="flex:1;min-width:100px;font-size:13px;padding:9px">
+          <datalist id="tzFilterList"></datalist>
+          <datalist id="modelFilterList"></datalist>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
           <select id="filterStatus" class="search-input" style="flex:1;min-width:110px;font-size:13px;padding:9px">
@@ -590,7 +592,7 @@ body.theme-steel{
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v27.08.26.1'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v27.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -1341,8 +1343,16 @@ function sortOrdersList_(list){
   }
   return arr;
 }
+function populateFilterDatalists_(){
+  if(!ordersCache) return;
+  const tzValues = [...new Set(ordersCache.map(o=>o["צ'"]).filter(Boolean))].sort();
+  const modelValues = [...new Set(ordersCache.map(o=>o['מודל']).filter(Boolean))].sort();
+  document.getElementById('tzFilterList').innerHTML = tzValues.map(v=>`<option value="${escapeHtml_(v)}">`).join('');
+  document.getElementById('modelFilterList').innerHTML = modelValues.map(v=>`<option value="${escapeHtml_(v)}">`).join('');
+}
 function applyFilters(){
   if(ordersCache === null){ return; }
+  populateFilterDatalists_();
   updateFiltersButtonLabel_();
   const q = document.getElementById('search').value.trim();
   const fDate = document.getElementById('filterDate').value;
