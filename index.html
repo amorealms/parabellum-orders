@@ -592,7 +592,7 @@ body.theme-steel{
 /* ============ CONFIG ============ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzVwzgAewybM5KrzYqBF5fLA_SG6RMGUira_73Vg8RObsj-pl6HY-6az8NYG98dDwr/exec';
 const BATTALION_NAME = 'יחסם 179';
-const VERSION = 'v27.08.26.2'; // format: vDD.MM.YY.revision — bump the revision on each update
+const VERSION = 'v27.08.26.3'; // format: vDD.MM.YY.revision — bump the revision on each update
 document.getElementById('versionBadgeLogin').textContent = VERSION;
 document.getElementById('versionBadgeTop').textContent = VERSION;
 let currentUser = null;
@@ -715,7 +715,7 @@ function buildWhatsAppPreview(){
   lines.push(`גדוד: ${BATTALION_NAME}`);
   lines.push(`צ: ${fd.get("צ'") || ''}`);
   lines.push(`כלי: ${kli || '-'}`);
-  if(tzomed === 'משבית') lines.push('מושבת');
+  lines.push(tzomed === 'משבית' ? 'משבית' : 'לא משבית');
   lines.push(`מקט: ${fd.get('מקט') || ''}`);
   lines.push(`כמות: ${fd.get('כמות שהוזמנה') || ''}`);
   lines.push(`שם פריט: ${fd.get('תיאור') || ''}`);
@@ -1554,7 +1554,7 @@ function bulkWhatsApp(){
   const blocks = items.map(o=>{
     const kli = o['מודל'] || '';
     let lines = [`גדוד: ${BATTALION_NAME}`, `צ: ${o["צ'"]||''}`, `כלי: ${kli||'-'}`];
-    if(o["צ' עומד"] === 'משבית') lines.push('מושבת');
+    lines.push(o["צ' עומד"] === 'משבית' ? 'משבית' : 'לא משבית');
     lines.push(`מקט: ${o['מקט']||''}`, `כמות: ${o['כמות שהוזמנה']||''}`, `שם פריט: ${o['תיאור']||''}`);
     return lines.join('\n');
   });
